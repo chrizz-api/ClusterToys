@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+case $1 in
+ remove)
+  # remove user cconf
+  echo "removing user cconf"
+  # deluser --remove-home cconf
+  if id -u cconf >/dev/null 2>&1; then
+   deluser cconf
+  fi
+ ;;
+ purge)
+  # remove /var/
+  echo "removing cconf-server store"
+  if [ -d /var/ctoys/cconf-server ] ; then
+   rm -Rf /var/ctoys/cconf-server
+  fi
+ ;;
+esac
+
+exit 0

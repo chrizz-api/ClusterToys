@@ -1,0 +1,8 @@
+Section: main
+Priority: optional
+Package: cluster-conf-server
+Version: 1.0.1-wheezy-10
+Maintainer: Christian Hilker <ch@ancientspledge.com>
+Depends: cluster-toys-common
+Architecture: all
+Description: Cluster configuration framework repository server

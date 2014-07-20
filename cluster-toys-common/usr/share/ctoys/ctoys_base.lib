@@ -1,0 +1,224 @@
+#!/bin/bash
+# cbase.lib - bash support functions for cluster toys
+#
+## functions:
+#
+#   ct_activate_colors [1/0]
+#   ct_debug "debug message" [debug level]
+#   ct_error "error message"
+#   ct_exec "execute string"
+#   ct_info "info text"
+#   ct_log "log message" ["log scope"]
+#   ct_verbose "verbose message"
+#   ct_warn "warning message"
+#
+## usage:
+#
+# ## include ctoys_base.lib
+#
+# if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
+#  source "/usr/share/ctoys/ctoys_base.lib"
+# else
+#  echo "ctoys_base.lib not found please install"
+#  exit 1
+# fi
+#
+# ## configure ctoys_base.lib
+#
+# CT_DEBUG=0
+# CT_VERBOSE=0
+# CT_TEST=0
+# CT_LOGGING=0
+# CT_SILENT=0
+# CT_LOGFILE="/dev/null"
+# CT_LOG_DEFAULT_SCOPE="ctoys"
+#
+# ## quick and dirty debug switch
+#
+# if [ "$1" = "-D" ] ; then
+#  CT_DEBUG=1
+#  if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+#   CT_DEBUG=$2
+#  fi
+# fi
+##################################
+
+# debian tool definitions
+
+CTT_CAT="/bin/cat"
+CTT_CD="cd"
+CTT_CP="/bin/cp"
+CTT_CUT="/usr/bin/cut"
+CTT_ECHO="/bin/echo"
+CTT_DATE="/bin/date"
+CTT_MD5SUM="/usr/bin/md5sum"
+CTT_LOGGER="/usr/bin/logger"
+CTT_RSYNC="/usr/bin/rsync"
+CTT_RM="/bin/rm"
+CTT_SSH="/usr/bin/ssh"
+CTT_TAR="/bin/tar"
+CTT_TEMPFILE="/bin/tempfile"
+CTT_TOUCH="/usr/bin/touch"
+CTT_WGET="/usr/bin/wget"
+
+# control variables
+
+CT_DEBUG=0
+CT_VERBOSE=0
+CT_TEST=0
+CT_SILENT=0
+CT_LOGGING=0
+CT_LOGFILE="/dev/null"
+CT_LOG_DEFAULT_SCOPE="ctoys"
+
+# default colors
+
+CT_COLOR_RED=
+CT_COLOR_YELLOW=
+CT_COLOR_BLUE=
+CT_COLOR_GREEN=
+CT_COLOR_WHITE='\033[0;37m'
+CT_COLOR_BRIGHT_WHITE='\033[1;37m'
+
+# deault ctoys_base.lib colors
+
+CT_COLOR_WARN_DEFAULT='\033[33m'
+CT_COLOR_DEBUG_DEFAULT='\033[32m'
+CT_COLOR_TEXT_DEFAULT='\033[0m'
+CT_COLOR_INFO_DEFAULT="$CT_COLOR_BRIGHT_WHITE"
+CT_COLOR_VERBOSE_DEFAULT='\033[32m'
+CT_COLOR_ERROR_DEFAULT='\033[31m'
+CT_COLOR_LOG_DEFAULT='\033[32m'
+CT_COLOR_EXECUTE_DEFAULT='\033[36m'
+
+# init colors
+
+CT_COLOR_WARN="$CT_COLOR_WARN_DEFAULT"
+CT_COLOR_DEBUG="$CT_COLOR_DEBUG_DEFAULT"
+CT_COLOR_TEXT="$CT_COLOR_TEXT_DEFAULT"
+CT_COLOR_INFO="$CT_COLOR_INFO_DEFAULT"
+CT_COLOR_ERROR="$CT_COLOR_ERROR_DEFAULT"
+CT_COLOR_VERBOSE="$CT_COLOR_VERBOSE_DEFAULT"
+CT_COLOR_LOG="$CT_COLOR_LOG_DEFAULT"
+CT_COLOR_EXECUTE="$CT_COLOR_EXECUTE_DEFAULT"
+
+# support functions
+
+
+## ct_info "info text"
+
+function ct_info {
+ if [ $CT_SILENT -eq 0 ] ; then
+  $CTT_ECHO -e "${CT_COLOR_INFO}$1${CT_COLOR_TEXT}"
+ fi
+}
+
+## ct_debug "debug message" [debug level]
+
+function ct_debug {
+ tct_debug_level=1
+ tct_debug_message="$1"
+ if [ $# -eq 2 ] ; then
+  tct_debug_level=$1
+  tct_debug_message="$2"
+ fi
+ if [ $CT_DEBUG -ge $tct_debug_level ] ; then
+  if [ $CT_SILENT -eq 0 ] ; then
+   $CTT_ECHO -e "${CT_COLOR_DEBUG}DEBUG $tct_level:${CT_COLOR_TEXT} $tct_debug_message"
+  fi
+ fi
+}
+
+## ct_verbose "verbose message"
+
+function ct_verbose {
+ if [[ $CT_VERBOSE -eq 1 || $CT_DEBUG -ge 1 ]] ; then
+  if [ $CT_SILENT -eq 0 ] ; then
+   $CTT_ECHO -e "${CT_COLOR_VERBOSE}VERBOSE:${CT_COLOR_TEXT} $1"
+  fi
+ fi
+}
+
+## ct_log "log message" ["log scope"]
+
+function ct_log {
+ if [ $CT_LOGGING -eq 1 ] ; then
+  tct_log_date=$($CTT_DATE +%F%t%T)
+  tct_log_scope="$CT_LOG_DEFAULT_SCOPE"
+  if [ $# -eq 2 ] ; then
+   tct_log_scope="$2"
+  fi
+  $CTT_ECHO -e "$tct_log_date [$tct_log_scope] $1" >> $CT_LOGFILE
+  if [[ $CT_VERBOSE -eq 1 || $CT_DEBUG -ge 1 ]] ; then
+   if [ $CT_SILENT -eq 0 ] ; then
+    $CTT_ECHO -e "${CT_COLOR_LOG}LOG $tct_log_scope:${CT_COLOR_TEXT} $1"
+   fi
+  fi
+ fi
+}
+
+## ct_warn "warning message"
+
+function ct_warn {
+ if [ $CT_SILENT -eq 0 ] ; then
+  $CTT_ECHO -e "${CT_COLOR_WARN}WARNING:${CT_COLOR_TEXT} $1"
+ fi
+}
+
+## ct_error "error message"
+
+function ct_error {
+ if [ $CT_SILENT -eq 0 ] ; then
+  $CTT_ECHO -e "${CT_COLOR_ERROR}ERROR:${CT_COLOR_TEXT} $1"
+ fi
+}
+
+## ct_exec "execute string"
+# this thing just prints out the execute string
+
+function ct_exec {
+ if [[ $CT_VERBOSE -eq 1 || $CT_DEBUG -ge 1 ]] ; then
+  if [ $CT_SILENT -eq 0 ] ; then
+   $CTT_ECHO -e "${CT_COLOR_EXECUTE}EXECUTE:${CT_COLOR_TEXT} $@"
+  fi
+ fi
+}
+
+#function ct_exec {
+# if [[ $c_verbose -eq 1 || $c_debug -ge 1 ]] ; then
+#  f_info "\033[36mEXECUTE:\033[0m $@"
+#  f_debug1 "argCount: $#"
+#  for i_arg in $@
+#  do
+#   f_debug1 "arg: $i_arg"
+#  done
+# fi
+# if [ 0 -eq $c_test ] ; then
+#  $@
+# fi
+#}
+
+## ct_activate_colors [1/0]
+# toggle colormode
+
+function ct_activate_colors {
+ if [ $1 -eq 1 ] ; then
+  CT_COLOR_WARN="$CT_COLOR_WARN_DEFAULT"
+  CT_COLOR_DEBUG="$CT_COLOR_DEBUG_DEFAULT"
+  CT_COLOR_TEXT="$CT_COLOR_TEXT_DEFAULT"
+  CT_COLOR_INFO="$CT_COLOR_INFO_DEFAULT"
+  CT_COLOR_ERROR="$CT_COLOR_ERROR_DEFAULT"
+  CT_COLOR_VERBOSE="$CT_COLOR_VERBOSE_DEFAULT"
+  CT_COLOR_LOG="$CT_COLOR_LOG_DEFAULT"
+  CT_COLOR_EXECUTE="$CT_COLOR_EXECUTE_DEFAULT"
+ else
+  CT_COLOR_WARN=""
+  CT_COLOR_DEBUG=""
+  CT_COLOR_TEXT=""
+  CT_COLOR_INFO=""
+  CT_COLOR_ERROR=""
+  CT_COLOR_VERBOSE=""
+  CT_COLOR_LOG=""
+  CT_COLOR_EXECUTE=""
+ fi
+}

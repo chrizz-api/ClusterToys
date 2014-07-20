@@ -1,0 +1,628 @@
+#!/bin/bash
+#
+# cluster toys configuration management
+#
+# version: 1.0.1
+#
+# history:
+#
+# 07-20-2014 - added domain hooks
+#
+# 07-10-2014 - fixed push permissions
+#
+# 06-05-2014 - updated for usage with domains and updating via http
+#
+# manually managing config store
+#
+#  adding directories with permissions manually
+#   tar --no-recursion -u -f store.tar /my/dir
+#
+#  listing content of store
+#   tar -tv -f store.tar
+#
+#
+# TODO:
+#
+# - http update fix domain permissions
+#
+#### Files #####
+#
+#  /etc/cconf/store                 - keeps domain stores
+#  /etc/cconf/cconf.dist.conf       - should be delivered by the cconf package
+#  /etc/cconf/cconf.local.conf      - keeps local changes
+#  /etc/cconf/abos.d                - keeps package domains for this machine
+#  /etc/cconf/excludes.conf         - local excluded files
+
+# include ctoys_base.lib
+
+if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
+ source "/usr/share/ctoys/ctoys_base.lib"
+else
+ echo "please install ctoys_base.lib first"
+ exit 1
+fi
+
+# ctoys_base.lib parameter
+
+CT_DEBUG=0
+CT_VERBOSE=0
+CT_TEST=0
+CT_LOGGING=1
+CT_LOGFILE="/var/log/cconf.log"
+CT_LOG_DEFAULT_SCOPE="cconf"
+
+# quick and dirty debug switch
+
+if [ "$1" = "-D" ] ; then
+ CT_DEBUG=1
+ if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+  CT_DEBUG=$2
+ fi
+fi
+
+## TODO
+#
+# test range setup ( not / )
+#  using $CTCC_ROOT_PATH
+#
+
+CTCC_ENABLED=1                                             # enables this thingy
+CTCC_KEYAUTH=0                                             # key authentification for using rsync passwordless
+CTCC_UPDATE_VIA_HTTP=1                                     # if 1 using wget for update, if 0 try to use rsync
+
+CTCC_LOCAL_PATH="/etc/cconf"                               # hosts local storage for cconf data
+CTCC_DIST_CONFIG="$CTCC_LOCAL_PATH/cconf.dist.conf"        # distributions configuration file
+CTCC_LOCAL_CONFIG="$CTCC_LOCAL_PATH/cconf.local.conf"      # local configuration overrides
+CTCC_LOCAL_EXCLUDE_FILE="$CTCC_LOCAL_PATH/excludes.conf"   # local excludes
+CTCC_LOCAL_EXCLUDE_ENABLED=0
+CTCC_ROOT_PATH="/"
+
+# default remote configuration
+
+CTCC_DIST="precise"                                        # distribution configuration
+CTCC_ABO=""                                                # init abos empty
+CTCC_REMOTE_USER="cconf"                                   # remote username for rsync connection
+CTCC_REMOTE_HOST="cconf.my.domain"                         # remote hostname
+CTCC_REMOTE_HTTP="http://cconf.my.domain"                  # webserver hostname
+CTCC_REMOTE_AUTHKEY="$CTCC_LOCAL_PATH/cconf.key"           # authkey for rsync connection
+CTCC_REMOTE_HOME="/var/ctoys/cconf-server"                 # cluster-conf home dir
+CTCC_REMOTE_DISTDIR="$CTCC_REMOTE_HOME/dists"              # remote location for rsync connection
+CTCC_REMOTE_URL_PREFIX="/"                                 # prefix for http url like
+                                                           # http://my.domain.com/cconf/prefix
+							   # prefix would be [/cconf/prefix]
+CTCC_PREPUSH_CMD="/usr/share/ctoys/cconf-server/bin/cconf_prepush"
+                                                           # location of prepush command
+# load dist and local configuration
+
+if [ -f "$CTCC_DIST_CONFIG" ] ; then
+ ct_debug "loading $CTCC_DIST_CONFIG"
+ source "$CTCC_DIST_CONFIG"
+fi
+
+if [ -f "$CTCC_LOCAL_CONFIG" ] ; then
+ ct_debug "loading $CTCC_LOCAL_CONFIG"
+ source "$CTCC_LOCAL_CONFIG"
+fi
+
+# setting up cconf environment
+
+CTCC_LOCAL_STORE="$CTCC_LOCAL_PATH/store"
+CTCC_LOCAL_HOOKS="$CTCC_LOCAL_PATH/hooks"
+
+CTCC_REMOTE_URL="$CTCC_REMOTE_HTTP$CTCC_REMOTE_URL_PREFIX$CTCC_DIST" # url for wget based update
+CTCC_REMOTE_STORE="$CTCC_REMOTE_DISTDIR/$CTCC_DIST/conf" # remote location for domain storages
+
+# if authkey present enable authkey
+
+if [ -f "$CTCC_REMOTE_AUTHKEY" ] ; then
+ ct_debug "using authkey $CTCC_REMOTE_AUTHKEY"
+ CTCC_KEYAUTH=1
+fi
+
+# setup tools
+
+#TODO check for -utp
+
+CTCC_RSYNC_OPTS="-tp"
+CTCC_TAR_OPTS=""
+CTCC_TAR_ENFORCE_OPTS="--numeric-owner --same-owner"
+
+# setup abolist
+
+if [ -d "$CTCC_LOCAL_PATH/abos.d" ] ; then
+ ct_debug "parsing $CTCC_LOCAL_PATH/abos.d"
+ t_files=$CTCC_LOCAL_PATH/abos.d/*
+ for i_f in $t_files
+ do
+  if ! [ ${i_f##*/} = "README" ] ; then
+   CTCC_ABO="$CTCC_ABO ${i_f##*/}"
+  fi
+ done
+ ct_debug "abos: $CTCC_ABO"
+fi
+
+# evaluate local excludes
+
+if [ -f "$CTCC_LOCAL_EXCLUDE_FILE" ] ; then
+ ct_debug "using local exclude file $CTCC_LOCAL_EXCLUDE_FILE"
+ CTCC_TAR_OPTS="--exclude-from=$CTCC_LOCAL_EXCLUDE_FILE $CTCC_TAR_OPTS"
+fi
+
+# prepush status codes
+
+CTCC_CONST_OK="OK"
+CTCC_CONST_ERROR="ERROR"
+CTCC_CONST_UP2DATE="UP2DATE"
+
+ctcc_result=0
+
+function ctcc_usage {
+  ct_info "USAGE: cconf [SWITCHES] [COMMAND] [ARG]"
+  ct_info "==================================================================="
+  ct_info "\tManageing server configuration"
+  ct_info ""
+  ct_info "\tSWITCHES:"
+  ct_info ""
+  ct_info "\t -D [level]"
+  ct_info "\t\tdebuglevel = level (default 1)"
+  ct_info "\t -s | --simulate"
+  ct_info "\t\tsimulate only"
+  ct_info "\t -v | --verbose"
+  ct_info "\t\tbe verbose"
+  ct_info ""
+  ct_info "\tCOMMANDS:"
+  ct_info ""
+  ct_info "\t -c | --commit domain filename"
+  ct_info "\t\tcommits file to local config store"
+  ct_info "\t -d | --diff [domain]"
+  ct_info "\t\tverify local config against local domain config store"
+  ct_info "\t -e | --enforce [domain]"
+  ct_info "\t\tenforce local config store [if domain is given only enforcing domain store]"
+  ct_info "\t -h | --help"
+  ct_info "\t\tthis helptext"
+  ct_info "\t -l | --list [domain]"
+  ct_info "\t\tlists local config store content"
+  ct_info "\t -p | --push [domain]"
+  ct_info "\t\tpushes domain to remote config store"
+  ct_info "\t -u | --update [domain]"
+  ct_info "\t\tupdates local config store with abonement"
+}
+
+function ctcc_push {
+  t_domains=""
+  if [ -n "$1" ] ; then
+   t_domains=$1
+  else
+   t_domains="$CTCC_ABO"
+  fi
+  for t_domain in $t_domains
+  do
+   ct_info "pushing to remote config store $t_domain"
+   ct_verbose "query revision"
+   t_source="$CTCC_LOCAL_STORE/$t_domain.tar"
+   if ! [ -f "$t_source" ] ; then
+    ct_error "push failed: local domain store not present"
+    exit 1
+   fi
+   ct_exec "$CTT_MD5SUM $t_source | $CTT_CUT -f 1 -d \" \""
+   t_md5sum=`$CTT_MD5SUM $t_source | $CTT_CUT -f 1 -d " "`
+   if ! [[ $t_md5sum =~ [a-f0-9]{32} ]] ; then
+    ct_error "md5sum failed: $t_md5sum"
+    exit 1
+   fi
+   t_prepushcmd="$CTCC_PREPUSH_CMD $CTCC_DIST $t_domain $t_md5sum"
+   t_sshidentityopt=""
+   if [ $CTCC_KEYAUTH -eq 1 ] ; then
+    t_sshidentityopt="-i $CTCC_REMOTE_AUTHKEY"
+   fi
+
+   ct_exec "$CTCC_SSH $t_sshidentityopt $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST \"$t_prepushcmd\""
+   if [ $CT_TEST -eq 0 ] ; then
+    t_prepush_result=`$CTT_SSH $t_sshidentityopt $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST "$t_prepushcmd"`
+   else
+    t_prepush_result=$CTCC_CONST_OK
+   fi
+   t_premission_fix_ops="--chmod=go=r"
+   ct_debug "result: $t_prepush_result"
+   case $t_prepush_result in
+    $CTCC_CONST_OK)
+     ct_info "new revision will be created"
+     if [ $CTCC_KEYAUTH -eq 1 ] ; then
+      ct_exec "$CTT_RSYNC $CTCC_RSYNC_OPTS $t_premission_fix_ops -e \"$CTT_SSH -i $CTCC_REMOTE_AUTHKEY\" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar"
+      if [ $CT_TEST -eq 0 ] ; then
+       $CTT_RSYNC $CTCC_RSYNC_OPTS $t_premission_fix_ops -e "$CTT_SSH -i $CTCC_REMOTE_AUTHKEY" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar
+       ct_log "pushed $t_domain" "push"
+      fi
+     else
+      ct_exec "$CTT_RSYNC $CTCC_RSYNC_OPTS $t_premission_fix_ops $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar"
+      if [ $CT_TEST -eq 0 ] ; then
+       $CTT_RSYNC $CTCC_RSYNC_OPTS $t_premission_fix_ops $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar
+       ct_log "pushed $t_domain" "push"
+      fi
+     fi
+     ct_info "done"
+     ;;
+    $CTCC_CONST_UP2DATE)
+     ct_info "no push needed revisions match"
+     ;;
+    *)
+     ct_error "error occured: $t_prepush_result"
+     ;;
+   esac
+  done
+}
+
+# enforces local domain stores
+## status : DONE
+
+function ctcc_enforce {
+  t_domains=""
+  t_errorcode=0
+  if ! [ -z "$1" ] ; then
+   t_domains=$1
+  else
+   t_domains="$CTCC_ABO"
+  fi
+  for t_domain in $t_domains
+  do
+   ct_info "enforcing local domain config store for $t_domain..."
+   t_domainfile="$CTCC_LOCAL_STORE/$t_domain.tar"
+   t_domainhook="$CTCC_LOCAL_HOOKS/$t_domain"
+   if [ -f "$t_domainfile" ] ; then
+    ct_exec "$CTT_CD $CTCC_ROOT_PATH; $CTT_TAR $CTCC_TAR_ENFORCE_OPTS $CTCC_TAR_OPTS -xpf $CTCC_LOCAL_STORE/$t_domain.tar"
+    if [ $CT_TEST -eq 0 ] ; then
+     cd $CTCC_ROOT_PATH; $CTT_TAR $CTCC_TAR_ENFORCE_OPTS $CTCC_TAR_OPTS -xpf $CTCC_LOCAL_STORE/$t_domain.tar
+     ct_log "enforced $t_domain" "enforce"
+    fi
+    if [[ -f "$t_domainhook" && ! -f "$t_domainhook.override" ]] ; then
+     ct_info "executing domain hook $t_domainhook"
+     $t_domainhook
+     t_errorcode=$?
+    fi
+    if ! [ $t_errorcode -eq 0 ] ; then
+     ct_error "domain hook error (code $t_errorcode)"
+    else
+     ct_info "..done"
+    fi
+   else
+    ct_error "local domain store not found ($t_domainfile)"
+   fi
+  done
+}
+
+# update local domain stores
+## status : TESTING
+
+# Tempfile usage
+
+function ctcc_update {
+  ct_info "updating local config store.."
+  t_upddomains=""
+  t_tmpfile="/dev/null"
+  if ! [ -z "$1" ] ; then
+   ct_debug "using argumented domain $1"
+   t_upddomains=$1
+  else
+   ct_debug "using domain list"
+   t_upddomains="$CTCC_ABO"
+  fi
+  for t_upddomain in $t_upddomains
+  do
+   t_errorcode=0
+   ct_info "updating local domain store for $t_upddomain.."
+   if [ "$CTCC_UPDATE_VIA_HTTP" = "0" ] ; then
+    # using rsync
+    if [ $CTCC_KEYAUTH -eq 1 ] ; then
+     ct_exec "$CTT_RSYNC $CTCC_RSYNC_OPTS -e \"$CTT_SSH -i $CTCC_REMOTE_AUTHKEY\" $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_upddomain.tar $CTCC_LOCAL_STORE/$t_upddomain.tar"
+     if [ $CT_TEST -eq 0 ] ; then
+      $CTT_RSYNC $CTCC_RSYNC_OPTS -e "$CTT_SSH -i $CTCC_REMOTE_AUTHKEY" $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_upddomain.tar $CTCC_LOCAL_STORE/$t_upddomain.tar
+      t_errorcode=$?
+     fi
+    else
+     ct_exec "$CTT_RSYNC $CTCC_RSYNC_OPTS $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_upddomain.tar $CTCC_LOCAL_STORE/$t_upddomain.tar"
+     if [ $CT_TEST -eq 0 ] ; then
+      $CTT_RSYNC $CTCC_RSYNC_OPTS $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_upddomain.tar $CTCC_LOCAL_STORE/$t_upddomain.tar
+      t_errorcode=$?
+     fi
+    fi
+   else
+    # using wget
+    t_tmpfile=$($CTT_TEMPFILE)
+    ct_debug "creating tempfile for download buffer at: $t_tmpfile"
+    ct_exec "$CTT_WGET -O $t_tmpfile $CTCC_REMOTE_URL/$t_upddomain.tar &> /dev/null"
+    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_WGET -O $t_tmpfile $CTCC_REMOTE_URL/$t_upddomain.tar &> /dev/null
+     t_errorcode=$?
+    fi
+   fi
+   if [ 0 -ne $t_errorcode ] ; then
+    ctcc_result=$t_errorcode
+    ct_error "failed to update domain $t_upddomain with error ($t_errorcode)"
+   else
+    if [ "$CTCC_UPDATE_VIA_HTTP" = "1" ] ; then
+     # copy tmpfile to destination
+     ct_exec "$CTT_CP -f $t_tmpfile $CTCC_LOCAL_STORE/$t_upddomain.tar &> /dev/null"
+     if [ $CT_TEST -eq 0 ] ; then
+      $CTT_CP -f $t_tmpfile $CTCC_LOCAL_STORE/$t_upddomain.tar &> /dev/null
+      ct_log "updated $t_upddomain" "update"
+     fi
+     # remove tmpfile
+     ct_exec "$CTT_RM -f $t_tmpfile &> /dev/null"
+     if [ $CT_TEST -eq 0 ] ; then
+      $CTT_RM -f $t_tmpfile &> /dev/null
+     fi
+    fi
+    ct_info "..done"
+   fi
+  done
+}
+
+# commit file to local domain stores
+## status : TESTING
+
+function ctcc_commit {
+  if ! [ $# -eq 2 ] ; then
+   ct_error "missing arguments"
+   exit 1
+  fi
+  ct_info "commit $2 to local config domain store $1..."
+  t_domain="$1"
+  t_domainstore="$CTCC_LOCAL_STORE/$t_domain.tar"
+  ct_debug "local domain store file: $t_domainstore"
+  t_commit_file="$2"
+  if ! [ -f $t_domainstore ] ; then
+   # check for abos.d entry and create
+   ct_warn "domain store file $t_domainstore doesnt exist"
+   if ! [ -f "$CTCC_LOCAL_PATH/abos.d/$t_domain" ] ; then
+    ct_warn "adding it to local abonnement"
+    ct_exec "$CTT_TOUCH $CTCC_LOCAL_PATH/abos.d/$t_domain"
+    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_TOUCH $CTCC_LOCAL_PATH/abos.d/$t_domain
+     ct_log "adding domain $t_domain to abo list" "abo"
+    fi
+   fi
+   # try update from remote domain store
+   ct_warn "trying to update from a possible remote domain store"
+   ctcc_update "$t_domain"
+   if [ $ctcc_result -ne 0 ] ; then
+    ct_warn "update for domain $t_domain failed with $ctcc_result assuming empty domain"
+    ct_exec "$CTT_RM -f $t_domainstore"
+    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_RM -f $t_domainstore
+    fi
+   fi
+   if ! [ -f $t_domainstore ] ; then
+    # create new domain
+    ct_warn "creating new domain ( $1 ) distribution ( $CTCC_DIST )"
+    ct_exec "$CTT_TAR -cf $t_domainstore $t_commit_file"
+    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_TAR -cf $t_domainstore $t_commit_file
+     ct_log "creating domain $t_domain with file $t_commit_file" "initial-commit"
+    fi
+   else
+    # update old domain
+    ct_warn "commiting to existing domain"
+    ct_exec "$CTT_TAR $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null"
+    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_TAR $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null
+    fi
+    ct_exec "$CTT_TAR $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file"
+    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_TAR $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file
+     ct_log "adding file $t_commit_file to domain $t_domain" "commit"
+    fi
+    ct_warn "the domain should be enforced after initial commit"
+   fi
+  else
+   # try to remove orginal file
+   ct_exec "$CTT_TAR $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null"
+   if [ $CT_TEST -eq 0 ] ; then
+    $CTT_TAR $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null
+   fi
+   # add new file
+   ct_exec "$CTT_TAR $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file"
+   if [ $CT_TEST -eq 0 ] ; then
+    $CTT_TAR $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file
+    ct_log "adding file $t_commit_file to domain $t_domain" "commit"
+   fi
+  fi
+  ct_info "..done"
+}
+
+# verify local domain stores
+## status : DONE
+
+function ctcc_verify {
+  t_domains=""
+  if ! [ -z "$1" ] ; then
+   t_domains=$1
+  else
+   t_domains="$CTCC_ABO"
+  fi
+  for t_domain in $t_domains
+  do
+   ct_info "verify local domain store $t_domain..."
+   t_domainfile="$CTCC_LOCAL_STORE/$t_domain.tar"
+   if [ -f "$t_domainfile" ] ; then
+    ct_exec "$CTT_CD $CTCC_ROOT_PATH; $CTT_TAR -df $t_domainfile"
+#    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_CD $CTCC_ROOT_PATH; $CTT_TAR $CTCC_TAR_OPTS -df $t_domainfile
+#    fi
+    ct_info "..done"
+   else
+    ct_error "local domain store not found ($t_domainfile)"
+   fi
+  done
+}
+
+# lists local domain stores
+## status : DONE
+
+function ctcc_list {
+  t_domains=""
+  if [ -n "$1" ] ; then
+   t_domains="$1"
+  else
+   t_domains="$CTCC_ABO"
+  fi
+  for t_domain in $t_domains
+  do
+   ct_info "listing domain store $t_domain..."
+   t_domainfile="$CTCC_LOCAL_STORE/$t_domain.tar"
+   if [ -f "$t_domainfile" ] ; then
+    ct_exec "$CTT_TAR -tvf $t_domainfile"
+#    if [ $CT_TEST -eq 0 ] ; then
+     $CTT_TAR -tvf $t_domainfile
+#    fi
+    ct_verbose "..done"
+   else
+    ct_error "local domain store not found ($t_domainfile)"
+   fi
+  done
+}
+
+function ctcc_xtest {
+ ct_log "log test"
+ ct_log "long log test" "ctcc_xtest"
+}
+
+for t_abo in $CTCC_ABO
+do
+ ct_debug "checking for local store of $CTCC_LOCAL_STORE/$t_abo.tar"
+ if ! [ -f "$CTCC_LOCAL_STORE/$t_abo.tar" ] ; then
+  ct_warn "local config store for $t_abo not found - please update"
+ fi
+done
+
+ct_debug "DebugLevel:$CT_DEBUG"
+
+if [ $CT_DEBUG -ge 2 ] ; then
+
+# ct_debug "arg1: $1"
+# ct_debug "arg2: $2"
+# ct_debug "arg3: $3"
+# ct_debug "arg4: $4"
+# ct_debug "arg5: $5"
+
+# ct_debug "Test debug1 message"
+# ct_verbose "Test verbose message"
+# ct_info "Test info message"
+# ct_warn "Test warning message"
+# ct_exec "echo $CTCC_DIST"
+# ct_error "Test error message"
+
+ ct_debug "CTCC_LOCAL_PATH: $CTCC_LOCAL_PATH"
+ ct_debug "CTCC_ABO: $CTCC_ABO"
+ ct_debug "CTCC_DIST: $CTCC_DIST"
+ ct_debug "CTCC_REMOTE_HOST: $CTCC_REMOTE_HOST"
+ ct_debug "CTCC_REMOTE_USER: $CTCC_REMOTE_USER"
+ ct_debug "CTCC_REMOTE_DISTDIR: $CTCC_REMOTE_DISTDIR"
+ ct_debug "CTCC_REMOTE_AUTHKEY: $CTCC_REMOTE_AUTHKEY"
+
+fi
+
+if [ $# -eq 0 ]; then
+  ctcc_usage
+  exit 1
+fi
+
+c_enforce=0
+c_enforce_arg=""
+
+while (( "$#" )) ; do
+ t_arg=""
+ case "$1" in
+# commands
+  -h|--help)
+   ctcc_usage
+   exit 0
+   ;;
+  -c|--commit) # expecting domain and file
+   ctcc_commit $2 $3
+   exit 0
+   ;;
+  -e|--enforce) # maybe domain
+   c_enforce=1
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    c_enforce_arg="$2"
+    shift
+   fi
+   shift
+   ;;
+  -u|--update) # maybe domain
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    t_arg="$2"
+    shift
+   fi
+   shift
+   ctcc_update "$t_arg"
+   if [ $c_enforce -eq 0 ]; then
+    exit 0
+   fi
+   c_enforce_arg="$t_arg"
+   ;;
+  -l|--list) # maybe domain
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    t_arg="$2"
+    shift
+   fi
+   shift
+   ctcc_list "$t_arg"
+   exit 0
+   ;;
+  -p|--push) # maybe domain
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    t_arg="$2"
+    shift
+   fi
+   shift
+   ctcc_push "$t_arg"
+   exit 0
+   ;;
+  -d|--diff) # maybe domain
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    t_arg="$2"
+    shift
+   fi
+   shift
+   ctcc_verify "$t_arg"
+   exit 0
+   ;;
+  -t)
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    t_arg="$2"
+    shift
+   fi
+   shift
+   ctcc_xtest "$t_arg"
+   exit 0
+   ;;
+# switches
+  -D)
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    shift
+   fi
+   shift
+   ;;
+  -s|--simulate)
+   CT_TEST=1
+   ct_debug "simulation enabled"
+   shift
+   ;;
+  -v|--verbose)
+   CT_VERBOSE=1
+   ct_debug "verbosity enabled"
+   shift
+   ;;
+  *)
+   ctcc_usage
+   exit 1
+   ;;
+ esac
+done
+
+if [ $c_enforce -eq 1 ]; then
+  ctcc_enforce $c_enforce_arg
+fi
+
+exit 0

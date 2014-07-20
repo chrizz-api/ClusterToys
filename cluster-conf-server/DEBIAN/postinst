@@ -1,0 +1,62 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+ configure)
+  # check for fresh install
+  if [ -z "$2" ]; then
+   echo "first installation"
+   if id -u cconf >/dev/null 2>&1; then
+    echo "cconf user allready exists"
+   else
+    echo "adding user cconf"
+    useradd -m -d /var/ctoys/cconf-server -s /bin/bash -c "cluster-conf server" -U cconf
+   fi
+   passwd -l cconf
+   echo -e "cconf\ncconf\n" | passwd cconf
+   echo "password for cconf set to cconf"
+   echo "creating auth key in /var/ctoys/cconf-server/keys"
+   # create keys
+   if ! [ -d /var/ctoys/cconf-server/keys ] ; then
+    su -s /bin/sh -c "mkdir -m 700 /var/ctoys/cconf-server/keys" cconf
+   fi
+   # create ssh keys
+   if ! [ -f /var/ctoys/cconf-server/keys/id_cconf ] ; then
+    su -s /bin/sh -c "ssh-keygen -q -t rsa -b 2048 -C 'cluster-conf server side key' -N '' -f /var/ctoys/cconf-server/keys/id_cconf" cconf
+   fi
+   # create .ssh
+   if ! [ -d /var/ctoys/cconf-server/.ssh ] ; then
+    su -s /bin/sh -c "mkdir -m 700 /var/ctoys/cconf-server/.ssh" cconf
+   fi
+   # add pub key to authorized_keys
+   su -s /bin/sh -c "cat /var/ctoys/cconf-server/keys/id_cconf.pub >> /var/ctoys/cconf-server/.ssh/authorized_keys" cconf
+   chmod 600 /var/ctoys/cconf-server/.ssh/authorized_keys
+  else
+   echo "upgrade"
+  fi
+
+  if ! [ -d "/var/ctoys/cconf-server/dists" ] ; then
+   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists" cconf
+  fi
+  # create /var/ctoys/cconf-server/dists/wheezy/conf
+  if ! [ -d "/var/ctoys/cconf-server/dists/wheezy/conf" ] ; then
+   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists/wheezy/conf" cconf
+  fi
+  # create /var/ctoys/cconf-server/dists/wheezy/backup
+  if ! [ -d "/var/ctoys/cconf-server/dists/wheezy/backup" ] ; then
+   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists/wheezy/backup" cconf
+  fi
+  # fix permissions
+  # chown -R cconf:cconf /var/ctoys/cconf-server/
+ ;;
+
+ abort-upgrade|abort-remove|abort-deconfigure)
+ ;;
+
+ *)
+  echo "postinst called with unknown argument \`$1'" >&2
+  exit 0
+ ;;
+esac
+
+exit 0
