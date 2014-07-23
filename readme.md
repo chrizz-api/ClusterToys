@@ -11,5 +11,6 @@ All scripts bash based with minimal software dependencies
 ### Dependencies
 
 - rsync
-- wget
 - ssh
+- tar
+- wget

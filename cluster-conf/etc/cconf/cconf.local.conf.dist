@@ -5,11 +5,3 @@ CT_VERBOSE=1                                                 # enable verbose me
 CT_LOGGING=1                                                 # enable logging
 CT_LOGFILE="/var/log/cconf.log"                              # define alternative log file
 CT_LOG_DEFAULT_SCOPE="cconf"                                 # define default logscope
-
-CTCC_DIST='wheezy'                                           # distribution configuration
-CTCC_ABO=""                                                  # preload configuration domain
-
-CTCC_REMOTE_USER="cconf"                                     # remote username for rsync connection
-CTCC_REMOTE_HOST="cconf.my.other.domain.com"                 # remote hostname
-CTCC_REMOTE_AUTHKEY="$CTCC_LOCAL_PATH/cconf.key"             # authkey for rsync connection
-CTCC_REMOTE_HOME="/home/cconf"                               # remote location for rsync connection

@@ -26,7 +26,10 @@ $RECYCLE.BIN/
 .LSOverride
 
 # Icon must ends with two \r.
-Icon
+Icon
+
+# debian packages
+*.deb
 
 # Thumbnails
 ._*
