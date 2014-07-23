@@ -1,6 +1,8 @@
 #!/bin/bash
 # cbase.lib - bash support functions for cluster toys
 #
+# Version 1.0.1
+#
 ## functions:
 #
 #   ct_activate_colors [1/0]
@@ -41,6 +43,7 @@
 #   CT_DEBUG=$2
 #  fi
 # fi
+#
 ##################################
 
 # debian tool definitions
