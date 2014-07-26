@@ -22,7 +22,7 @@ case "$1" in
    fi
    # create ssh keys
    if ! [ -f /var/ctoys/cconf-server/keys/id_cconf ] ; then
-    su -s /bin/sh -c "ssh-keygen -q -t rsa -b 2048 -C 'cluster-conf server side key' -N '' -f /var/ctoys/cconf-server/keys/id_cconf" cconf
+    su -s /bin/sh -c "ssh-keygen -q -t rsa -b 2048 -C 'cluster-conf server key' -N '' -f /var/ctoys/cconf-server/keys/id_cconf" cconf
    fi
    # create .ssh
    if ! [ -d /var/ctoys/cconf-server/.ssh ] ; then
@@ -31,6 +31,10 @@ case "$1" in
    # add pub key to authorized_keys
    su -s /bin/sh -c "cat /var/ctoys/cconf-server/keys/id_cconf.pub >> /var/ctoys/cconf-server/.ssh/authorized_keys" cconf
    chmod 600 /var/ctoys/cconf-server/.ssh/authorized_keys
+   # fix log permissions
+   if ! [ -f /var/ctoys/cconf-server/cconf-server.log ] ; then
+    su -s /bin/sh -c "touch /var/ctoys/cconf-server/cconf-server.log" cconf
+   fi
   else
    echo "upgrade"
   fi
@@ -38,16 +42,6 @@ case "$1" in
   if ! [ -d "/var/ctoys/cconf-server/dists" ] ; then
    su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists" cconf
   fi
-  # create /var/ctoys/cconf-server/dists/wheezy/conf
-  if ! [ -d "/var/ctoys/cconf-server/dists/wheezy/conf" ] ; then
-   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists/wheezy/conf" cconf
-  fi
-  # create /var/ctoys/cconf-server/dists/wheezy/backup
-  if ! [ -d "/var/ctoys/cconf-server/dists/wheezy/backup" ] ; then
-   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists/wheezy/backup" cconf
-  fi
-  # fix permissions
-  # chown -R cconf:cconf /var/ctoys/cconf-server/
  ;;
 
  abort-upgrade|abort-remove|abort-deconfigure)

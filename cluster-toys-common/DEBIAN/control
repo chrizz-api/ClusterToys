@@ -1,8 +1,8 @@
 Section: main
 Priority: optional
 Package: cluster-toys-common
-Version: 1.0.1
+Version: 1.0.2-2
 Maintainer: Christian Hilker <ch@ancientspledge.com>
-Depends: awk, bash, rsync, ssh, sed, wget
+Depends: bash
 Architecture: all
 Description: cluster toys bash utility library

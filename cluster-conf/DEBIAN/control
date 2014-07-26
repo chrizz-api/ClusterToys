@@ -1,8 +1,8 @@
 Section: main
 Priority: optional
 Package: cluster-conf
-Version: 1.0.2
+Version: 1.0.3-2
 Maintainer: Christian Hilker <ch@ancientspledge.com>
-Depends: cluster-toys-common
+Depends: cluster-toys-common, rsync, wget, awk, sed, tar
 Architecture: all
 Description: Configuration framework for general purpose cluster
