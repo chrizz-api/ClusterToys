@@ -6,6 +6,8 @@
 #
 # history:
 #
+# 07-26-2014 - fixed info and help command bugs
+#
 # 07-25-2014 - updated ctoys lib tools
 #              added info command
 #
@@ -239,26 +241,26 @@ function ctcc_usage {
 
 function ctcc_info {
  ct_settings
- ct_info"Displaying hosts cconf configuration"
- ct_info"\tCTCC_ABO=$CTCC_ABO"
- ct_info"\tCTCC_DIST=$CTCC_DIST"
- ct_info"\tCTCC_ENABLED=$CTCC_ENABLED"
- ct_info"\tCTCC_KEYAUTH=$CTCC_KEYAUTH"
- ct_info"\tCTCC_UPDATE_VIA_HTTP=$CTCC_UPDATE_VIA_HTTP"
- ct_info"Local and Remote configs"
- ct_info"\tCTCC_DIST_CONFIG=$CTCC_DIST_CONFIG"
- ct_info"\tCTCC_LOCAL_EXCLUDE_FILE=$CTCC_LOCAL_EXCLUDE_FILE"
- ct_info"\tCTCC_LOCAL_EXCLUDE_ENABLED=$CTCC_LOCAL_EXCLUDE_ENABLED"
- ct_info"\tCTCC_LOCAL_PATH=$CTCC_LOCAL_PATH"
- ct_info"\tCTCC_ROOT_PATH=$CTCC_ROOT_PATH"
- ct_info"\tCTCC_REMOTE_USER=$CTCC_REMOTE_USER"
- ct_info"\tCTCC_REMOTE_HOST=$CTCC_REMOTE_HOST"
- ct_info"\tCTCC_REMOTE_HTTP=$CTCC_REMOTE_HTTP"
- ct_info"\tCTCC_REMOTE_AUTHKEY=$CTCC_REMOTE_AUTHKEY"
- ct_info"\tCTCC_REMOTE_HOME=$CTCC_REMOTE_HOME"
- ct_info"\tCTCC_REMOTE_DISTDIR=$CTCC_REMOTE_DISTDIR"
- ct_info"\tCTCC_REMOTE_URL_PREFIX=$CTCC_REMOTE_URL_PREFIX"
- ct_info"\tCTCC_PREPUSH_CMD=$CTCC_PREPUSH_CMD"
+ ct_info "Displaying hosts cconf configuration"
+ ct_info "\tCTCC_ABO=$CTCC_ABO"
+ ct_info "\tCTCC_DIST=$CTCC_DIST"
+ ct_info "\tCTCC_ENABLED=$CTCC_ENABLED"
+ ct_info "\tCTCC_KEYAUTH=$CTCC_KEYAUTH"
+ ct_info "\tCTCC_UPDATE_VIA_HTTP=$CTCC_UPDATE_VIA_HTTP"
+ ct_info "Local and Remote configs"
+ ct_info "\tCTCC_DIST_CONFIG=$CTCC_DIST_CONFIG"
+ ct_info "\tCTCC_LOCAL_EXCLUDE_FILE=$CTCC_LOCAL_EXCLUDE_FILE"
+ ct_info "\tCTCC_LOCAL_EXCLUDE_ENABLED=$CTCC_LOCAL_EXCLUDE_ENABLED"
+ ct_info "\tCTCC_LOCAL_PATH=$CTCC_LOCAL_PATH"
+ ct_info "\tCTCC_ROOT_PATH=$CTCC_ROOT_PATH"
+ ct_info "\tCTCC_REMOTE_USER=$CTCC_REMOTE_USER"
+ ct_info "\tCTCC_REMOTE_HOST=$CTCC_REMOTE_HOST"
+ ct_info "\tCTCC_REMOTE_HTTP=$CTCC_REMOTE_HTTP"
+ ct_info "\tCTCC_REMOTE_AUTHKEY=$CTCC_REMOTE_AUTHKEY"
+ ct_info "\tCTCC_REMOTE_HOME=$CTCC_REMOTE_HOME"
+ ct_info "\tCTCC_REMOTE_DISTDIR=$CTCC_REMOTE_DISTDIR"
+ ct_info "\tCTCC_REMOTE_URL_PREFIX=$CTCC_REMOTE_URL_PREFIX"
+ ct_info "\tCTCC_PREPUSH_CMD=$CTCC_PREPUSH_CMD"
 }
 
 function ctcc_push {
@@ -583,7 +585,8 @@ while (( "$#" )) ; do
 # commands
   -h|--help)
    ctcc_usage
-   exit 0
+   shift
+   # exit 0
    ;;
   -c|--commit) # expecting domain and file
    ctcc_commit $2 $3
@@ -599,6 +602,7 @@ while (( "$#" )) ; do
    ;;
   -i|--info)
    ctcc_info
+   shift
    # exit 0
    ;;
   -u|--update) # maybe domain

@@ -87,7 +87,6 @@ CTT['TAR']='/bin/tar'
 CTT['TEMPFILE']='/bin/tempfile'
 CTT['TOUCH']='/usr/bin/touch'
 CTT['WGET']='/usr/bin/wget'
-CTT['TESTTOTOL']='/bogus/hocus'
 
 # control variables
 

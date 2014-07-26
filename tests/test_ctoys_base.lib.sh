@@ -22,6 +22,10 @@ else
  fi
 fi
 
+# bogus command
+
+CTT['TESTTOTOL']='/bogus/hocus'
+
 CT_DEBUG=1
 CT_VERBOSE=1
 CT_TEST=0
