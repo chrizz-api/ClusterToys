@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+# generating a backup of current package version
+#
+# Version 1.0.2
+#
+
+# include ctoys_base.lib
+
+if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
+ source "/usr/share/ctoys/ctoys_base.lib"
+else
+ echo "please install ctoys_base.lib first"
+ exit 1
+fi
+
+# ctoys_base.lib default parameter
+
+CT_DEBUG=0
+CT_VERBOSE=0
+CT_TEST=0
+CT_SILENT=1
+CT_LOGGING=1
+CT_LOG_DEFAULT_SCOPE="cconf-server"
+
+# default parameter
+
+CTCC_HOME="/var/ctoys/cconf-server/"
+CTCC_DISTDIR="$CTCC_HOME/dists"
+CTCC_EXT="tar"
+CT_LOGFILE="$CTCC_HOME/cconf-server.log"
+
+if [ -f "etc/cconf/server.conf" ] ; then
+ source "etc/cconf/server.conf"
+fi
+
+if [ -f "etc/cconf/server.local.conf" ] ; then
+ source "etc/cconf/server.conf"
+fi
+
+CTCC_CONST_OK="OK"
+CTCC_CONST_ERROR="ERROR"
+CTCC_CONST_UP2DATE="UP2DATE"
+
+# check ctoys tool presence
+
+ct_retcode=0
+t_errorcnt=0
+
+ct_check_tool DATE
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool SH
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool MKDIR
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool ID
+t_errorcnt=$((t_errorcnt + ct_retcode))
+
+if [ $t_errorcnt -ge 1 ] ; then
+ echo $CTCC_CONST_ERROR
+ ct_error "missing $t_errorcnt tools - exiting"
+ exit 1
+fi
+
+# map arguments
+
+c_dist="$1"
+c_domain="$2"
+c_md5sum="$3"
+
+# working variables
+
+t_date=`${CTT[DATE]} +%Y-%m-%d-%H-%M-%S`
+t_dist_valid=0
+
+# check arguments
+
+#  check for target argument
+for t_entry in $CTCC_DISTDIR/*/
+do
+ t_dist=${t_entry%*/}
+ t_dist=${t_dist##*/}
+ if [ "$t_dist" = "$c_dist" ] ; then
+  t_dist_valid=1
+ fi
+done
+
+if [[ $t_dist_valid -eq 0 ]] ; then
+ echo $CTCC_CONST_ERROR
+ ct_log "invalid argument dist: $c_dist" "error"
+ exit 1
+fi
+
+#  check for md5sum argument
+if ! [[ "$c_md5sum" =~ [a-f0-9]{32} ]] ; then
+ echo $CTCC_CONST_ERROR
+ ct_log "invalid md5 sum: $c_md5sum for domain: $c_domain" "error"
+ exit 1
+fi
+
+t_source="$CTCC_DISTDIR/$c_dist/conf/$c_domain.$CTCC_EXT"
+t_dest="$CTCC_DISTDIR/$c_dist/backup/$c_domain""_""$t_date"".$CTCC_EXT"
+
+# first entry?
+if ! [[ -f "$t_source" ]] ; then
+ echo $CTCC_CONST_OK
+ ct_log "creating new domain store: $c_domain" "create"
+ exit 0
+fi
+
+# verify checksum
+t_md5sum=`${CTT[MD5SUM]} $t_source | ${CTT[CUT]} -f 1 -d " "`
+
+if ! [[ $t_md5sum =~ [a-f0-9]{32} ]] ; then
+ echo $CTCC_CONST_ERROR
+ ct_log "failed to calculate local md5 sum: $t_md5sum for domain: $c_domain" "error"
+ exit 1
+fi
+
+if [ "$t_md5sum" = "$c_md5sum" ] ; then
+ echo $CTCC_CONST_UP2DATE
+ exit 0
+fi
+
+# do backup
+ct_log "creating backup: $t_dest for domain $c_domain"
+cp $t_source $t_dest > /dev/null 2> /dev/null
+
+echo $CTCC_CONST_OK
+exit 0

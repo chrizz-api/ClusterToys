@@ -1,0 +1,214 @@
+#!/bin/bash
+#
+# create an empty distribution store
+#
+# Version 1.0.0
+#
+
+# include ctoys_base.lib
+
+if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
+ source "/usr/share/ctoys/ctoys_base.lib"
+else
+ echo "please install ctoys_base.lib first"
+ exit 1
+fi
+
+# ctoys_base.lib default parameter
+
+CT_DEBUG=0
+CT_VERBOSE=0
+CT_TEST=0
+CT_SILENT=0
+CT_LOGGING=1
+CT_LOG_DEFAULT_SCOPE="cconf-server-create-dist"
+
+# default parameter
+
+CTCC_HOME="/var/ctoys/cconf-server"
+CTCC_DISTDIR="$CTCC_HOME/dists"
+CTCC_USER="cconf"
+CT_LOGFILE="$CTCC_HOME/cconf-server.log"
+
+if [ "$1" = "-D" ] ; then
+ CT_DEBUG=1
+ if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+  CT_DEBUG=$2
+ fi
+fi
+
+if [ -f "/etc/cconf/server.conf" ] ; then
+ ct_debug "loading /etc/cconf/server.conf"
+ source "/etc/cconf/server.conf"
+fi
+
+if [ -f "/etc/cconf/server.local.conf" ] ; then
+ ct_debug "loading /etc/cconf/server.local.conf"
+ source "/etc/cconf/server.local.conf"
+fi
+
+if [ "$1" = "-D" ] ; then
+ CT_DEBUG=1
+ if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+  CT_DEBUG=$2
+ fi
+fi
+
+# check ctoys tool presence
+
+ct_retcode=0
+t_errorcnt=0
+
+ct_check_tool SU
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool SH
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool MKDIR
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool ID
+t_errorcnt=$((t_errorcnt + ct_retcode))
+
+if [ $t_errorcnt -ge 1 ] ; then
+ ct_error "missing $t_errorcnt tools - exiting"
+ exit 1
+fi
+
+## functions
+
+function ctcd_usage {
+  ct_info "USAGE: cconf-server-create-dist [SWITCHES] [COMMAND] [domains]"
+  ct_info "==================================================================="
+  ct_info "\tcreates local distribution store"
+  ct_info ""
+  ct_info "\tEXAMPLE:"
+  ct_info ""
+  ct_info "\t\tcconf-server-create-dist squeeze wheezy precise trusty"
+  ct_info "\tSWITCHES:"
+  ct_info ""
+  ct_info "\t -D [level]"
+  ct_info "\t\tdebuglevel = level (default 1)"
+  ct_info "\t -s | --simulate"
+  ct_info "\t\tsimulate only"
+  ct_info "\t -v | --verbose"
+  ct_info "\t\tbe verbose"
+  ct_info ""
+  ct_info "\tCOMMANDS:"
+  ct_info ""
+  ct_info "\t -h | --help"
+  ct_info "\t\tthis helptext"
+  ct_info "\t -i | --info"
+  ct_info "\t\tdisplays detailed config information"
+}
+
+function ctcd_info {
+ ct_settings
+ ct_info "Displaying hosts cconf-server-create-dist configuration"
+ ct_info "\tCTCC_HOME=$CTCC_HOME"
+ ct_info "\tCTCC_DISTDIR=$CTCC_DISTDIR"
+}
+
+function ctcd_create_dist {
+ local t_dist="$1"
+ local t_dist_target="$CTCC_DISTDIR/$t_dist"
+ local t_progress=1
+ if [ -d "$CTCC_DISTDIR/$1" ] ; then
+  t_progress=0
+  ct_warn "distribution allready exist!"
+ fi
+ if [ $t_progress -eq 1 ] ; then
+  ct_info "create distribution conf and backup folder for $1"
+  if [ $c_chown_needed -eq 1 ] ; then
+   ct_exec "${CTT[SU]} -s ${CTT[SH]} -c \"${CTT[MKDIR]} -p -m 755 $t_dist_target/backup\" $CTCC_USER"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT['SU']} -s ${CTT['SH']} -c "${CTT[MKDIR]} -p -m 755 $t_dist_target/backup" $CTCC_USER
+   fi
+   ct_exec "${CTT[SU]} -s ${CTT[SH]} -c \"${CTT[MKDIR]} -p -m 755 $t_dist_target/conf\" $CTCC_USER"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[SU]} -s ${CTT[SH]} -c "${CTT[MKDIR]} -p -m 755 $t_dist_target/conf" $CTCC_USER
+   fi
+   ct_log "user $c_uid created distribution store $t_dist"
+  else
+   ct_exec "${CTT[MKDIR]} -p -m 755 \"$t_dist_target/backup\""
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[MKDIR]} -p -m 755 "$t_dist_target/backup"
+   fi
+   ct_exec "${CTT[MKDIR]} -p -m 755 \"$t_dist_target/conf\""
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[MKDIR]} -p -m 755 "$t_dist_target/conf"
+   fi
+   ct_log "created distribution store $t_dist"
+  fi
+ fi
+}
+
+# check arguments
+
+if [ $# -eq 0 ] ; then
+ ctcd_usage
+ ct_warn "missing distribution argument"
+ exit 1
+fi
+
+# check username
+
+c_chown_needed=0
+c_uid=`${CTT[ID]} -u -n`
+if ! [ $c_uid = $CTCC_USER ] ; then
+ c_chown_needed=1
+fi
+
+# process arguments
+
+c_dists=""
+
+while (( "$#" )) ; do
+ case "$1" in
+  -h|--help)
+   ctcd_usage
+   shift
+   # exit 0
+   ;;
+  -i|--info)
+   ctcd_info
+   shift
+   # exit 0
+   ;;
+  -s|--simulate)
+   CT_TEST=1
+   ct_debug "simulation enabled"
+   shift
+   ;;
+  -D)
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    shift
+   fi
+   shift
+   ;;
+  -v|--verbose)
+   CT_VERBOSE=1
+   ct_debug "verbosity enabled"
+   shift
+   ;;
+  *)
+   if [[ "${1::1}" != "-" ]] ; then
+    c_dists="$c_dists $1"
+    ct_debug "adding distribution: ($1)"
+    shift
+   else
+    ct_error "bad argument: $@"
+    ctcd_usage
+    exit 1
+   fi
+   ;;
+ esac
+done
+
+# preparing distribution list
+ct_debug "distributions: $c_dists"
+c_dists=`ct_trim "$c_dists"`
+ct_debug "prepared distributions: $c_dists"
+
+for i_dist in $c_dists
+do
+ ctcd_create_dist $i_dist
+done
