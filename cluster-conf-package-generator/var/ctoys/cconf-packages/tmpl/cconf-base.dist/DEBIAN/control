@@ -1,0 +1,8 @@
+Section: main
+Priority: optional
+Package: replacePREFIXcconf-replaceDOMAIN
+Version: 0.1
+Maintainer: John Doe <j@doe.com>
+Depends: cluster-conf
+Architecture: all
+Description: Cluster Configuration domain replaceDOMAIN

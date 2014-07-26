@@ -1,0 +1,288 @@
+#!/bin/bash
+#
+# cluster toys package generator for configuration management
+#
+# version: 1.0.0
+#
+# history:
+#
+# 07-24-2014 - initial code
+#
+# TODO:
+#
+# - quite alot
+#
+#### Files #####
+#
+#  /etc/cconf/package-gen.conf - keeps configuration
+#  /var/ctoys/cconf-packages/src     - is where the package source gets generated
+#  /var/ctoys/cconf-packages/deb     - is where the packages are stored
+#  /var/ctoys/cconf-packages/tmpl    - is where the templates are stored
+#
+
+# include ctoys_base.lib
+
+if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
+ source "/usr/share/ctoys/ctoys_base.lib"
+else
+ echo "please install ctoys_base.lib first"
+ exit 1
+fi
+
+# ctoys_base.lib parameter
+
+CT_DEBUG=0
+CT_VERBOSE=0
+CT_TEST=0
+CT_LOGGING=0
+CT_LOGFILE="/var/log/cconf.log"
+CT_LOG_DEFAULT_SCOPE="cconf-package-gen"
+
+# load ctoys lib
+
+if [ -f "/usr/share/ctoys/ctoys_cconf_package_gen.lib" ] ; then
+ source "/usr/share/ctoys/ctoys_cconf_package_gen.lib"
+else
+ echo "please install ctoys_cconf_package_gen.lib first"
+ exit 1
+fi
+
+# cconf-package-gen parameter
+
+CTCP_CONF_DIR="/etc/cconf"
+CTCP_CONF="$CTCP_CONF_DIR/package-gen.conf"
+
+# begin default package-gen.conf.dist
+
+CTCP_BASE='/var/ctoys/cconf-packages'            # base dir for stored data
+CTCP_TARGET_DIST=""                              # target distributions like: wheezy squeeze precise trusty
+CTCP_CCONF_PACKAGE_PREFIX""                      # prefix for cconf packages
+CTCP_SOURCE_DIR="$CTCP_BASE/src"                 # debian package source directory
+CTCP_BUILD_DIR="$CTCP_BASE/build"                # debian package build directory
+CTCP_TMPL_DIR="$CTCP_BASE/tmpl"                  # template directory
+CTCP_TMPL="cconf-base"                           # select the template to use for package generation here
+CTCP_TMPL_DOMAIN_SEARCHTAG="replaceDOMAIN"       # placeholder in template files for domain
+CTCP_TMPL_PREFIX_SEARCHTAG="replacePREFIX"       # placeholder in template files for prefix
+CTCP_SERVER_BASE="/var/ctoys/cconf-server/dists" # location for the cconf-server home
+CTCP_REPREPO_BASE="/var/www/apt"                 # reprepo maintained repository location
+CTCP_DOMAIN_CREATION_ENABLED=1                   # create empty domain store
+CTCP_CREATE_SOURCE_ENABLED=1                     # create debian package source from template
+CTCP_DPKGBUILD_ENABLED=1                         # create debian package
+CTCP_REPREPO_ENABLED=1                           # include debian package with reprepro
+CTCP_SECURE_PROCESS=1                            # ask for each step
+
+# end default package-gen.conf.dist
+
+# check arguments
+
+if [ $# -eq 0 ] ; then
+ ctcp_usage
+ ct_warn "missing domainname argument"
+ exit 1
+fi
+
+# quick and dirty debug switch
+
+if [ "$1" = "-D" ] ; then
+ CT_DEBUG=1
+ if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+  CT_DEBUG=$2
+ fi
+fi
+
+## include config
+
+if [ -f ] ; then
+ ct_debug "loading config $CTCP_CONF"
+ source $CTCP_CONF
+else
+ ct_warn "Using default config. You should create $CTCP_CONF. See ${CTCP_CONF}.dist"
+fi
+
+# quick and dirty debug switch
+
+if [ "$1" = "-D" ] ; then
+ CT_DEBUG=1
+ if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+  CT_DEBUG=$2
+ fi
+fi
+
+## check for template
+
+if ! [ -d $CTCP_TMPL ] ; then
+ ct_error "template $CTCP_TMPL not found"
+ exit 1
+fi
+
+## check for distribution configuration
+
+if ! [ -n "$CTCP_TARGET_DIST" ] ; then
+ ct_warn "missing target distribution in config file (CTCP_TARGET_DIST)"
+fi
+
+c_domains=""
+
+# check ctoys tool presence
+
+ct_retcode=0
+t_errorcnt=0
+
+ct_check_tool FAKEROOT
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool DPKG
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool CP
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool SED
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool MV
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool TAR
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool REPREPRO
+t_errorcnt=$((t_errorcnt + ct_retcode))
+
+if [ $t_errorcnt -ge 1 ] ; then
+ ct_error "missing $t_errorcnt tools - exiting"
+ exit 1
+fi
+
+# process arguments
+
+while (( "$#" )) ; do
+ case "$1" in
+  -h|--help)
+   ctcp_usage
+   exit 0
+   ;;
+  -i|--info)
+   ctcp_info
+   exit 0
+   ;;
+  -d|--distribution) # expecting domain and file
+   CTCP_DIST="$2"
+   ct_debug "passed distribution target: ($2)"
+   shift
+   shift
+   ;;
+  -s|--simulate)
+   CT_TEST=1
+   ct_debug "simulation enabled"
+   shift
+   ;;
+  -D)
+   if [[ -n "$2" && "${2::1}" != "-" ]] ; then
+    shift
+   fi
+   shift
+   ;;
+  -v|--verbose)
+   CT_VERBOSE=1
+   ct_debug "verbosity enabled"
+   shift
+   ;;
+  *)
+   if [[ "${1::1}" != "-" ]] ; then
+    c_domains="$c_domains $1"
+    ct_debug "adding domain: ($1)"
+   else
+    ct_error "bad argument: $@"
+    ctcp_usage
+    exit 1
+   fi
+   ;;
+ esac
+done
+
+## check for distribution targets
+
+if ! [ -n "$CTCP_DIST" ] ; then
+ ct_debug "no distribution specified using config values"
+ CTCP_DIST="$CTCP_TARGET_DIST"
+fi
+
+# preparing domainlist
+ct_debug "domains: $c_domains"
+c_domains=`ct_trim "$c_domains"`
+ct_debug "prepared domainlist: $c_domains"
+ct_debug "distribution targets: $CTCP_DIST"
+
+if [ -z "$CTCP_DIST" ] ; then
+ ct_error "invalid distribution targets. use -d option or fix configfile $CTCP_CONF"
+ exit 1
+fi
+
+# process
+
+a_retcode=0
+
+if [ "$CTCP_DOMAIN_CREATION_ENABLED" = "1" ] ; then
+ t_progress=1
+ if [ $CTCP_SECURE_PROCESS -eq 1 ] ; then
+  t_progress=0
+  read -p "create domain stores (y/n)? " t_choice
+  case "$t_choice" in
+   y|Y ) t_progress=1
+       ;;
+   n|N ) ct_info "skipping ";;
+   * ) ct_error "invalid option"; exit 1 ;;
+  esac
+ fi
+ if [ $t_progress -eq 1 ] ; then
+  ctcp_create_domain_store
+ fi
+fi
+
+if [ "$CTCP_CREATE_SOURCE_ENABLED" = "1" ] ; then
+ t_progress=1
+ if [ $CTCP_SECURE_PROCESS -eq 1 ] ; then
+  t_progress=0
+  read -p "create debian package sources (y/n)? " t_choice
+  case "$t_choice" in
+   y|Y ) t_progress=1
+       ;;
+   n|N ) ct_info "skipping ";;
+   * ) ct_error "invalid option"; exit 1 ;;
+  esac
+ fi
+ if [ $t_progress -eq 1 ] ; then
+  ctcp_create_debian_package_source
+ fi
+fi
+
+if [ "$CTCP_DPKGBUILD_ENABLED" = "1" ] ; then
+ t_progress=1
+ if [ $CTCP_SECURE_PROCESS -eq 1 ] ; then
+  t_progress=0
+  read -p "create debian packages (y/n)? " t_choice
+  case "$t_choice" in
+   y|Y ) t_progress=1
+       ;;
+   n|N ) ct_info "skipping ";;
+   * ) ct_error "invalid option"; exit 1 ;;
+  esac
+ fi
+ if [ $t_progress -eq 1 ] ; then
+  ctcp_build_debian_package
+ fi
+fi
+
+if [ "$CTCP_REPREPO_ENABLED" = "1" ] ; then
+ t_progress=1
+ if [ $CTCP_SECURE_PROCESS -eq 1 ] ; then
+  t_progress=0
+  read -p "distribute debian packages (y/n)? " t_choice
+  case "$t_choice" in
+   y|Y ) t_progress=1
+       ;;
+   n|N ) ct_info "skipping ";;
+   * ) ct_error "invalid option"; exit 1 ;;
+  esac
+ fi
+ if [ $t_progress -eq 1 ] ; then
+  ctcp_distribute_package
+ fi
+fi
+
+exit 0

@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -e
+case $1 in
+	purge)
+                tCCONFDOMAIN='replaceDOMAIN'
+		tCCONFABOS='/etc/cconf/abos.d'
+                tCCONFSTORE='/etc/cconf/store'
+		tCCONFABOFILE="$tCCONFABOS/$tCCONFDOMAIN"
+		tCCONFSTOREFILE="$tCCONFSTORE/$tCCONFDOMAIN.tar"
+
+                if [ -f "$tCCONFABOFILE" ] ; then
+			echo "Removing cconf domain $tCCONFDOMAIN"
+			rm -f "$tCCONFABOFILE"
+		else
+			echo "Failed to remove cconf domain $tCCONFDOMAIN: ($tCCONFABOFILE)"
+		fi
+
+                if [ -f "$tCCONFSTOREFILE" ] ; then
+                        echo "Removing cconf domain store $tCCONFDOMAIN"
+                        rm -f "$tCCONFSTOREFILE"
+                else
+                        echo "Failed to remove cconf domain $tCCONFDOMAIN: ($tCCONFSTOREFILE)"
+                fi
+	;;
+esac
+
+#DEBHELPER#

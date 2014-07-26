@@ -1,0 +1,223 @@
+#!/bin/bash
+# ctoys_cconf_package_gen.lib - bash support functions for cconf-package-gen
+#
+# Version 1.0.1
+#
+# history:
+#
+# 07-24-2014 - initial code
+#
+## functions:
+#
+#  ctcp_build_debian_package
+#  ctcp_create_debian_package_source
+#  ctcp_create_domain_store
+#  ctcp_distribute_package
+#  ctcp_usage
+#
+
+function ctcp_info {
+ ct_debug 3 "called: ctcp_info $@"
+ ct_settings
+ ct_info "Displaying hosts cconf-package-gen configuration"
+ ct_info "\tCTCP_BASE=$CTCP_BASE"
+ ct_info "\tCTCP_TARGET_DIST=$CTCP_TARGET_DIST"
+ ct_info "\tCTCP_CCONF_PACKAGE_PREFIX=$CTCP_CCONF_PACKAGE_PREFIX"
+ ct_info "\tCTCP_SOURCE_DIR=$CTCP_SOURCE_DIR"
+ ct_info "\tCTCP_BUILD_DIR=$CTCP_BUILD_DIR"
+ ct_info "\tCTCP_TMPL_DIR=$CTCP_TMPL_DIR"
+ ct_info "\tCTCP_TMPL=$CTCP_TMPL"
+ ct_info "\tCTCP_TMPL_DOMAIN_SEARCHTAG=$CTCP_TMPL_DOMAIN_SEARCHTAG"
+ ct_info "\tCTCP_TMPL_PREFIX_SEARCHTAG=$CTCP_TMPL_PREFIX_SEARCHTAG"
+ ct_info "\tCTCP_SERVER_BASE=$CTCP_SERVER_BASE"
+ ct_info "\tCTCP_REPREPO_BASE=$CTCP_REPREPO_BASE"
+ ct_info "\tCTCP_DOMAIN_CREATION_ENABLED=$CTCP_DOMAIN_CREATION_ENABLED"
+ ct_info "\tCTCP_CREATE_SOURCE_ENABLED=$CTCP_CREATE_SOURCE_ENABLED"
+ ct_info "\tCTCP_DPKGBUILD_ENABLED=$CTCP_DPKGBUILD_ENABLED"
+ ct_info "\tCTCP_REPREPO_ENABLED=$CTCP_REPREPO_ENABLED"
+ ct_info "\tCTCP_SECURE_PROCESS=$CTCP_SECURE_PROCESS"
+}
+
+function ctcp_usage {
+ ct_debug 3 "called: ctcp_usage $@"
+ ct_info "USAGE: cconf-package-gen [SWITCHES] [COMMAND] [domains]"
+ ct_info "==================================================================="
+ ct_info "\tgenerate cluster conf packages and stores for configuration domains"
+ ct_info ""
+ ct_info "\tEXAMPLE:"
+ ct_info ""
+ ct_info "\t\tcconf-package-gen -d squeeze domain1 domain2 domain3"
+ ct_info "\tSWITCHES:"
+ ct_info ""
+ ct_info "\t -d | --distribution distribution"
+ ct_info "\t\tselects distribution for which domains and domain packages should be generated"
+ ct_info "\t -D [level]"
+ ct_info "\t\tdebuglevel = level (default 1)"
+ ct_info "\t -s | --simulate"
+ ct_info "\t\tsimulate only"
+ ct_info "\t -v | --verbose"
+ ct_info "\t\tbe verbose"
+ ct_info ""
+ ct_info "\tCOMMANDS:"
+ ct_info ""
+ ct_info "\t -h | --help"
+ ct_info "\t\tthis helptext"
+ ct_info "\t -i | --info"
+ ct_info "\t\tdisplays detailed config information"
+}
+
+function ctcp_build_debian_package {
+ ct_debug 3 "called: calling ctcp_build_debian_package $@"
+ for i_domain in $CTCP_DOMAINS
+ do
+  local t_package_name="$CTCP_CCONF_PACKAGE_PREFIX-cconf-$i_domain"
+  local t_package_src="$CTCP_SOURCE_DIR/$t_package_name"
+  local t_package_dest="$CTCP_BUILD_DIR/${t_package_name}.deb"
+  ct_info "generating package ${t_package_name}.deb from source ( $t_package_src ) in $CTCP_BUILD_DIR"
+  local t_progress=1
+  if [ -f "$t_package_dest"] ; then
+   if ! [ $CT_FORCE -eq 1 ] ; then
+    read -p "package $t_package_dest exist. create new package from source (y/n)? " t_choice
+    case "$t_choice" in
+     y|Y ) t_progress=1
+     ;;
+     n|N ) ct_info "skipping " ;;
+     * ) ct_error "invalid option"; exit 1 ;;
+    esac
+   else
+    t_progress=1
+   fi
+  fi
+  if [ $t_progress -eq 1 ] ; then
+   ct_debug "build package"
+   ct_exec "${CTT[FAKEROOT]} ${CTT[DPKG]} -b $t_package_src $t_package_dest"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[FAKEROOT]} ${CTT[DPKG]} -b $t_package_src $t_package_dest
+   fi
+  fi
+ done
+}
+
+function ctcp_create_debian_package_source {
+ ct_debug 3 "called: ctcp_create_debian_package_source $@"
+ for i_domain in $CTCP_DOMAINS
+ do
+  local t_package_name="$CTCP_CCONF_PACKAGE_PREFIX-cconf-$i_domain"
+  local t_package_src_dest="$CTCP_SOURCE_DIR/$t_package_name"
+  ct_info "generating source for package $t_package_name from template ( $CTCP_TMPL ) in $CTCP_SOURCE_DIR"
+  local t_progress=1
+  local t_regen=""
+  if [ -d "$t_package_src_dest" ] ; then
+   t_progress=0
+   t_regen="/*"
+   if ! [ $CT_FORCE -eq 1 ] ; then
+    read -p "package source for domain $i_domain exists. create new source (y/n)? " t_choice
+    case "$t_choice" in
+     y|Y ) t_progress=1
+     ;;
+     n|N ) ct_info "skipping " ;;
+     * ) ct_error "invalid option"; exit 1 ;;
+    esac
+   else
+    t_progress=1
+   fi
+  fi
+  if [ $t_progress -eq 1 ] ; then
+   ct_debug " copy template"
+   ct_exec "${CTT[CP]} -ax $CTCP_TMPL_DIR/$CTCP_TMPL$t_regen $t_package_src_dest"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[CP]} -ax $CTCP_TMPL_DIR/$CTCP_TMPL$t_regen $t_package_src_dest
+   fi
+   ct_debug " creating control file"
+   ct_exec "${CTT[SED]} -i \"s/$CTCP_TMPL_DOMAIN_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/control"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[SED]} -i \"s/$CTCP_TMPL_DOMAIN_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/control
+   fi
+   ct_exec "${CTT[SED]} -i \"s/$CTCP_TMPL_PREFIX_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/control
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[SED]} -i \"s/$CTCP_TMPL_PREFIX_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/control
+   fi
+   ct_debug " creating postrm file"
+   ct_exec "${CTT[SED]} -i \"s/$CTCP_TMPL_DOMAIN_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/postrm"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[SED]} -i \"s/$CTCP_TMPL_DOMAIN_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/postrm
+   fi
+   ct_debug " creating postinst file"
+   ct_exec "${CTT[SED]} -i \"s/$CTCP_TMPL_DOMAIN_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/postinst"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[SED]} -i \"s/$CTCP_TMPL_DOMAIN_SEARCHTAG/$i_domain/g\" $t_package_src_dest/DEBIAN/postinst
+   fi
+  fi
+ done
+}
+
+function ctcp_create_domain_store {
+ ct_debug 3 "called: ctcp_create_domain_store $@"
+ for i_dist in $CTCP_DIST
+ do
+  # check for valid distribution
+  if [[ -d "$CTCP_SERVER_BASE/$i_dist/conf" ] && [ -d "$CTCP_SERVER_BASE/$i_dist/backup" ]] ; then
+   for i_domain in $CTCP_DOMAINS
+   do
+    local t_progress=1
+    local t_exists=0
+    local t_domain_store="$CTCP_SERVER_BASE/$i_dist/conf/${i_domain}.tar"
+    # check for existing domain store
+    if [ -f "$t_domain_store" ] ; then
+     t_progress=0
+     t_exists=1
+     if ! [[ $CT_FORCE -eq 1 ]] ; then
+      read -p "domain store $i_domain for distribution $i_dist exists. create new store (y/n)? " t_choice
+      case "$t_choice" in
+       y|Y ) ct_info "creating backup"
+        t_progress=1
+        ;;
+       n|N ) ct_info "skipping " ;;
+       * ) ct_error "invalid option"; exit 1 ;;
+      esac
+     else
+      t_progress=1
+     fi
+     if [ $t_progress -eq 1 ] ; then
+      # create backup
+      local t_date=$(date +%Y-%m-%d-%H-%M-%S)
+      local t_backupfile="$CTCP_SERVER_BASE/$i_dist/backup/${i_domain}-reinit-${t_date}.tar"
+      ct_exec "${CTT[MV]} $t_domain_store $t_backupfile"
+      if [ $CT_TEST -eq 0 ] ; then
+       ${CTT[MV]} $t_domain_store $t_backupfile
+      fi
+     fi
+    fi
+    # create empty domain store
+    if [ $t_progress -eq 1 ] ; then
+     ct_info "creating new domain store ($i_domain) for distribution $i_dist"
+     ct_exec "${CTT[TAR]} -c -T /dev/null -f $t_domain_store"
+     if [ $CT_TEST -eq 0 ] ; then
+      ${CTT[TAR]} -c -T /dev/null -f $t_domain_store
+     fi
+    fi
+   done
+  else
+   a_retcode=2
+   ct_error "distribution target $i_dist not found in $CTCP_SERVER_BASE"
+  fi
+ done
+}
+
+function ctcp_distribute_package {
+ ct_debug 3 "called: ctcp_distribute_package $@"
+ ct_debug "using reprepo base: $CTCP_REPREPO_BASE"
+ for i_domain in $CTCP_DOMAINS
+ do
+  local t_package_name="$CTCP_CCONF_PACKAGE_PREFIX-cconf-$i_domain"
+  local t_package="$CTCP_BUILD_DIR/${t_package_name}.deb"
+  for i_dist in $CTCP_DIST
+  do
+   ct_info "adding package $t_package_name to repository $i_dist"
+   ct_exec "${CTT[REPREPRO]} -b $CTCP_REPREPO_BASE includedeb $i_dist $t_package"
+   if [ $CT_TEST -eq 0 ] ; then
+    ${CTT[REPREPRO]} -b $CTCP_REPREPO_BASE includedeb $i_dist $t_package
+   fi
+  done
+ done
+}

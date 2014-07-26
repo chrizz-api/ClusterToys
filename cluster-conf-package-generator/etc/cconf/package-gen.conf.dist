@@ -1,0 +1,20 @@
+# configuration for cconf-package-gen
+# copy to etc/cconf/package-generator.conf and change for your needs
+
+CTCP_BASE='/var/ctoys/cconf-packages'            # base dir for stored data
+CTCP_TARGET_DIST=""                              # target distributions like: wheezy squeeze precise trusty
+CTCP_CCONF_PACKAGE_PREFIX="                      # prefix for cconf packages
+CTCP_SOURCE_DIR="$CTCP_BASE/src"                 # debian package source directory
+CTCP_BUILD_DIR="$CTCP_BASE/build"                # debian package build directory
+CTCP_TMPL_DIR="$CTCP_BASE/tmpl"                  # template directory
+CTCP_TMPL="cconf-base"                           # select the template to use for package generation here
+CTCP_TMPL_DOMAIN_SEARCHTAG="replaceDOMAIN"       # placeholder in template files for domain
+CTCP_TMPL_PREFIX_SEARCHTAG="replacePREFIX"       # placeholder in template files for prefix
+CTCP_SERVER_BASE="/var/ctoys/cconf-server/dists" # location for the cconf-server home
+CTCP_REPREPO_BASE="/var/www/apt"                 # reprepo maintained repository location
+CTCP_DOMAIN_CREATION_ENABLED=1                   # create empty domain store
+CTCP_CREATE_SOURCE_ENABLED=1                     # create debian package source from template
+CTCP_DPKGBUILD_ENABLED=1                         # create debian package
+CTCP_REPREPO_ENABLED=1                           # include debian package with reprepro
+CTCP_SECURE_PROCESS=1                            # ask for each step
+
