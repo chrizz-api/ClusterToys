@@ -3,7 +3,7 @@
 
 CTCP_BASE='/var/ctoys/cconf-packages'            # base dir for stored data
 CTCP_TARGET_DIST=""                              # target distributions like: wheezy squeeze precise trusty
-CTCP_CCONF_PACKAGE_PREFIX="                      # prefix for cconf packages
+CTCP_CCONF_PACKAGE_PREFIX=""                     # prefix for cconf packages
 CTCP_SOURCE_DIR="$CTCP_BASE/src"                 # debian package source directory
 CTCP_BUILD_DIR="$CTCP_BASE/build"                # debian package build directory
 CTCP_TMPL_DIR="$CTCP_BASE/tmpl"                  # template directory

@@ -38,7 +38,7 @@ CT_LOGGING=0
 CT_LOGFILE="/var/log/cconf.log"
 CT_LOG_DEFAULT_SCOPE="cconf-package-gen"
 
-# load ctoys lib
+# load ctoys ctoys_cconf_package_gen.lib
 
 if [ -f "/usr/share/ctoys/ctoys_cconf_package_gen.lib" ] ; then
  source "/usr/share/ctoys/ctoys_cconf_package_gen.lib"
@@ -56,7 +56,7 @@ CTCP_CONF="$CTCP_CONF_DIR/package-gen.conf"
 
 CTCP_BASE='/var/ctoys/cconf-packages'            # base dir for stored data
 CTCP_TARGET_DIST=""                              # target distributions like: wheezy squeeze precise trusty
-CTCP_CCONF_PACKAGE_PREFIX""                      # prefix for cconf packages
+CTCP_CCONF_PACKAGE_PREFIX=""                     # prefix for cconf packages
 CTCP_SOURCE_DIR="$CTCP_BASE/src"                 # debian package source directory
 CTCP_BUILD_DIR="$CTCP_BASE/build"                # debian package build directory
 CTCP_TMPL_DIR="$CTCP_BASE/tmpl"                  # template directory
@@ -88,6 +88,7 @@ if [ "$1" = "-D" ] ; then
  if [[ -n "$2" && "${2::1}" != "-" ]] ; then
   CT_DEBUG=$2
  fi
+ ct_debug "debug level $CT_DEBUG set"
 fi
 
 ## include config
@@ -110,7 +111,7 @@ fi
 
 ## check for template
 
-if ! [ -d $CTCP_TMPL ] ; then
+if ! [ -d "$CTCP_TMPL_DIR/$CTCP_TMPL" ] ; then
  ct_error "template $CTCP_TMPL not found"
  exit 1
 fi
@@ -154,11 +155,13 @@ while (( "$#" )) ; do
  case "$1" in
   -h|--help)
    ctcp_usage
-   exit 0
+   shift
+   # exit 0
    ;;
   -i|--info)
    ctcp_info
-   exit 0
+   shift
+   # exit 0
    ;;
   -d|--distribution) # expecting domain and file
    CTCP_DIST="$2"
@@ -186,6 +189,7 @@ while (( "$#" )) ; do
    if [[ "${1::1}" != "-" ]] ; then
     c_domains="$c_domains $1"
     ct_debug "adding domain: ($1)"
+    shift
    else
     ct_error "bad argument: $@"
     ctcp_usage
@@ -210,6 +214,11 @@ ct_debug "distribution targets: $CTCP_DIST"
 
 if [ -z "$CTCP_DIST" ] ; then
  ct_error "invalid distribution targets. use -d option or fix configfile $CTCP_CONF"
+ exit 1
+fi
+
+if [ -z "$c_domains" ] ; then
+ ct_error "No domains specified. I wont do anything"
  exit 1
 fi
 
