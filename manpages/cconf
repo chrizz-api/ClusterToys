@@ -1,0 +1,17 @@
+.\" Manpage for cconf.
+.\" Contact ch@ancientspledge.com to correct errors or typos.
+.TH man 8 "27 July 2014" "1.0.3" "cconf man page"
+.SH NAME
+cconf \- cluster-conf
+.SH SYNOPSIS
+cconf [ARGS] DOMAIN
+.SH DESCRIPTION
+cconf helps your cluster to manage configurations.
+.SH OPTIONS
+need to define options
+.SH SEE ALSO
+cconf-package-gen(8), cconf-server-create-dist(8), cconf-server-prepush(8), cluster-toys(8)
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Christian Hilker (ch@ancientspledge.com)

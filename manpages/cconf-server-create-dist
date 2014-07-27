@@ -1,0 +1,17 @@
+.\" Manpage for cconf-server-create-dist.
+.\" Contact ch@ancientspledge.com to correct errors or typos.
+.TH man 8 "27 July 2014" "1.0.0" "cconf-server-create-dist man page"
+.SH NAME
+cconf-server-create-dist \- cluster-conf
+.SH SYNOPSIS
+cconf-server-create-dist [ARGS] DISTRIBUTION
+.SH DESCRIPTION
+cconf-server-create-dist creates distribution folders on your cluster-conf-server.
+.SH OPTIONS
+need to define options
+.SH SEE ALSO
+cconf(8), cconf-package-gen(8), cconf-server-prepush(8), cluster-toys(8)
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Christian Hilker (ch@ancientspledge.com)

@@ -1,0 +1,13 @@
+.\" Manpage for cluster-toys.
+.\" Contact ch@ancientspledge.com to correct errors or typos.
+.TH man 8 "27 July 2014" "1.0" "cluster-toys man page"
+.SH NAME
+cluster-toys \- collection of tools to maintain general purpose cluster
+.SH DESCRIPTION
+lots of usefull tools to maintain general purpose cluster
+.SH SEE ALSO
+cconf(8), cconf-package-gen(8), cconf-server-create-dist(8), cconf-server-prepush(8)
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Christian Hilker (ch@ancientspledge.com)
