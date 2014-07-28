@@ -158,7 +158,7 @@ function ct_debug {
  fi
  if [ $CT_DEBUG -ge $tct_debug_level ] ; then
   if [ $CT_SILENT -eq 0 ] ; then
-   echo -e "${CT_COLOR_DEBUG}DEBUG $tct_level:${CT_COLOR_TEXT} $tct_debug_message"
+   echo -e "${CT_COLOR_DEBUG}DEBUG $tct_debug_level:${CT_COLOR_TEXT} $tct_debug_message"
   fi
  fi
 }
