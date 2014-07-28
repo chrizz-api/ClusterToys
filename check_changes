@@ -1,0 +1,74 @@
+#!/bin/bash
+
+t_package_dir="/var/packages/ClusterToys"
+
+t_file1="$t_package_dir/cluster-conf/usr/sbin/cconf"
+t_file2="/usr/sbin/cconf"
+t_stat1=`stat -c %y $t_file1`
+t_stat2=`stat -c %y $t_file2`
+t_basename=$(basename $t_file1)
+echo -e "\033[0;32mcheck:\033[1;32m ( $t_basename )\033[0m"
+echo -e "\033[1;36m$t_stat1\033[0;36m $t_file1\033[0m"
+echo -e "\033[1;36m$t_stat2\033[0;36m $t_file2\033[0m"
+diff $t_file1 $t_file2 | colordiff
+echo -e "\033[1;33m===========================================================================\033[0m"
+echo ""
+echo ""
+t_file1="$t_package_dir/cluster-conf-package-generator/usr/bin/cconf-package-gen"
+t_file2="/usr/bin/cconf-package-gen"
+t_stat1=`stat -c %y $t_file1`
+t_stat2=`stat -c %y $t_file2`
+t_basename=$(basename $t_file1)
+echo -e "\033[0;32mcheck:\033[1;32m ( $t_basename )\033[0m"
+echo -e "\033[1;36m$t_stat1\033[0;36m $t_file1\033[0m"
+echo -e "\033[1;36m$t_stat2\033[0;36m $t_file2\033[0m"
+diff $t_file1 $t_file2 | colordiff
+echo -e "\033[1;33m===========================================================================\033[0m"
+echo ""
+echo ""
+t_file1="$t_package_dir/cluster-conf-package-generator/usr/share/ctoys/ctoys_cconf_package_gen.lib"
+t_file2="/usr/share/ctoys/ctoys_cconf_package_gen.lib"
+t_stat1=`stat -c %y $t_file1`
+t_stat2=`stat -c %y $t_file2`
+t_basename=$(basename $t_file1)
+echo -e "\033[0;32mcheck:\033[1;32m ( $t_basename )\033[0m"
+echo -e "\033[1;36m$t_stat1\033[0;36m $t_file1\033[0m"
+echo -e "\033[1;36m$t_stat2\033[0;36m $t_file2\033[0m"
+diff $t_file1 $t_file2 | colordiff
+echo -e "\033[1;33m===========================================================================\033[0m"
+echo ""
+echo ""
+t_file1="$t_package_dir/cluster-conf-server/usr/bin/cconf-server-create-dist"
+t_file2="/usr/bin/cconf-server-create-dist"
+t_stat1=`stat -c %y $t_file1`
+t_stat2=`stat -c %y $t_file2`
+t_basename=$(basename $t_file1)
+echo -e "\033[0;32mcheck:\033[1;32m ( $t_basename )\033[0m"
+echo -e "\033[1;36m$t_stat1\033[0;36m $t_file1\033[0m"
+echo -e "\033[1;36m$t_stat2\033[0;36m $t_file2\033[0m"
+diff $t_file1 $t_file2 | colordiff
+echo -e "\033[1;33m===========================================================================\033[0m"
+echo ""
+echo ""
+t_file1="$t_package_dir/cluster-conf-server/usr/bin/cconf-server-prepush"
+t_file2="/usr/bin/cconf-server-prepush"
+t_stat1=`stat -c %y $t_file1`
+t_stat2=`stat -c %y $t_file2`
+t_basename=$(basename $t_file1)
+echo -e "\033[0;32mcheck:\033[1;32m ( $t_basename )\033[0m"
+echo -e "\033[1;36m$t_stat1\033[0;36m $t_file1\033[0m"
+echo -e "\033[1;36m$t_stat2\033[0;36m $t_file2\033[0m"
+diff $t_file1 $t_file2 | colordiff
+echo -e "\033[1;33m===========================================================================\033[0m"
+echo ""
+echo ""
+t_file1="$t_package_dir/cluster-toys-common/usr/share/ctoys/ctoys_base.lib"
+t_file2="/usr/share/ctoys/ctoys_base.lib"
+t_stat1=`stat -c %y $t_file1`
+t_stat2=`stat -c %y $t_file2`
+t_basename=$(basename $t_file1)
+echo -e "\033[0;32mcheck:\033[1;32m ( $t_basename )\033[0m"
+echo -e "\033[1;36m$t_stat1\033[0;36m $t_file1\033[0m"
+echo -e "\033[1;36m$t_stat2\033[0;36m $t_file2\033[0m"
+diff $t_file1 $t_file2 | colordiff
+echo -e "\033[1;33m===========================================================================\033[0m"

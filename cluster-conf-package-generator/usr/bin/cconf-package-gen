@@ -11,6 +11,9 @@
 # TODO:
 #
 # - quite alot
+# - check for user in lib methods
+# - maybe include server config for $CTCC_USER
+# - add additional dependencies to package source control file
 #
 #### Files #####
 #
@@ -48,6 +51,9 @@ else
 fi
 
 # cconf-package-gen parameter
+
+CTCC_CONF_DIR="/etc/cconf"
+CTCC_CONF="$CTCC_CONF_DIR/server.conf"
 
 CTCP_CONF_DIR="/etc/cconf"
 CTCP_CONF="$CTCP_CONF_DIR/package-gen.conf"
@@ -91,7 +97,16 @@ if [ "$1" = "-D" ] ; then
  ct_debug "debug level $CT_DEBUG set"
 fi
 
-## include config
+## include cconf-server config
+
+if [ -f ] ; then
+ ct_debug "loading config $CTCP_CONF"
+ source $CTCC_CONF
+else
+ ct_warn "Using default config. You should create $CTCP_CONF. See ${CTCP_CONF}.dist"
+fi
+
+## include package-gen config
 
 if [ -f ] ; then
  ct_debug "loading config $CTCP_CONF"
@@ -221,6 +236,8 @@ if [ -z "$c_domains" ] ; then
  ct_error "No domains specified. I wont do anything"
  exit 1
 fi
+
+CTCP_DOMAINS="$c_domains"
 
 # process
 

@@ -208,6 +208,12 @@ ct_debug "distributions: $c_dists"
 c_dists=`ct_trim "$c_dists"`
 ct_debug "prepared distributions: $c_dists"
 
+if [ -z "$c_dists" ] ; then
+ ct_error "missing dist argument"
+ ctcd_usage
+ exit 1
+fi
+
 for i_dist in $c_dists
 do
  ctcd_create_dist $i_dist

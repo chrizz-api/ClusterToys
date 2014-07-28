@@ -65,6 +65,7 @@ declare -A CTT
 
 CTT['CAT']='/bin/cat'
 #CTT['CD']='cd'
+CTT['CHOWN']='/bin/chown'
 CTT['CP']='/bin/cp'
 CTT['CUT']='/usr/bin/cut'
 #CTT['ECHO']='/bin/echo'
@@ -315,3 +316,4 @@ function ct_trim {
  t_var="${t_var%"${t_var##*[![:space:]]}"}"
  echo -n "$t_var"
 }
+
