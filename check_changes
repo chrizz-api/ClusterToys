@@ -26,7 +26,7 @@ diff $t_file1 $t_file2 | colordiff
 echo -e "\033[1;33m===========================================================================\033[0m"
 echo ""
 echo ""
-t_file1="$t_package_dir/cluster-conf-package-generator/usr/share/ctoys/ctoys_cconf_package_gen.lib"
+t_file1="$t_package_dir/cluster-conf-package-generator/usr/share/ctoys/ctoys_cconf_package_gen.blib"
 t_file2="/usr/share/ctoys/ctoys_cconf_package_gen.lib"
 t_stat1=`stat -c %y $t_file1`
 t_stat2=`stat -c %y $t_file2`
@@ -62,7 +62,7 @@ diff $t_file1 $t_file2 | colordiff
 echo -e "\033[1;33m===========================================================================\033[0m"
 echo ""
 echo ""
-t_file1="$t_package_dir/cluster-toys-common/usr/share/ctoys/ctoys_base.lib"
+t_file1="$t_package_dir/cluster-toys-common/usr/share/ctoys/ctoys_base.blib"
 t_file2="/usr/share/ctoys/ctoys_base.lib"
 t_stat1=`stat -c %y $t_file1`
 t_stat2=`stat -c %y $t_file2`

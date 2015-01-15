@@ -1,7 +1,7 @@
 Section: main
 Priority: optional
 Package: cluster-conf-package-generator
-Version: 1.0.0-4
+Version: 1.0.1-1
 Maintainer: Christian Hilker <ch@ancientspledge.com>
 Depends: cluster-toys-common
 Suggests: cluster-conf-server, reprepro, fakeroot, tar, sed

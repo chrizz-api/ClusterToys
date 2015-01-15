@@ -7,10 +7,10 @@
 
 # include ctoys_base.lib
 
-if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
- source "/usr/share/ctoys/ctoys_base.lib"
+if [ -f "/usr/share/ctoys/ctoys_base.blib" ] ; then
+ source "/usr/share/ctoys/ctoys_base.blib"
 else
- echo "please install ctoys_base.lib first"
+ echo "please install ctoys_base.blib first"
  exit 1
 fi
 

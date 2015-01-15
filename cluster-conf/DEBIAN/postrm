@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+case $1 in
+ purge)
+  # remove /var/
+  echo "removing cconf domain store"
+  if [ -d /etc/cconf/store ] ; then
+   rm -Rf /etc/cconf/store
+  fi
+ ;;
+esac
+
+exit 0

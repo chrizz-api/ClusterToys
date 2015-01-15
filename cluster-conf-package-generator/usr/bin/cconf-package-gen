@@ -2,9 +2,11 @@
 #
 # cluster toys package generator for configuration management
 #
-# version: 1.0.0
+# version: 1.0.1
 #
 # history:
+#
+# 01-12-2015 - changed bash lib names to .blib
 #
 # 07-24-2014 - initial code
 #
@@ -25,10 +27,10 @@
 
 # include ctoys_base.lib
 
-if [ -f "/usr/share/ctoys/ctoys_base.lib" ] ; then
- source "/usr/share/ctoys/ctoys_base.lib"
+if [ -f "/usr/share/ctoys/ctoys_base.blib" ] ; then
+ source "/usr/share/ctoys/ctoys_base.blib"
 else
- echo "please install ctoys_base.lib first"
+ echo "please install ctoys_base.blib first"
  exit 1
 fi
 
@@ -43,10 +45,10 @@ CT_LOG_DEFAULT_SCOPE="cconf-package-gen"
 
 # load ctoys ctoys_cconf_package_gen.lib
 
-if [ -f "/usr/share/ctoys/ctoys_cconf_package_gen.lib" ] ; then
- source "/usr/share/ctoys/ctoys_cconf_package_gen.lib"
+if [ -f "/usr/share/ctoys/ctoys_cconf_package_gen.blib" ] ; then
+ source "/usr/share/ctoys/ctoys_cconf_package_gen.blib"
 else
- echo "please install ctoys_cconf_package_gen.lib first"
+ echo "please install ctoys_cconf_package_gen.blib first"
  exit 1
 fi
 

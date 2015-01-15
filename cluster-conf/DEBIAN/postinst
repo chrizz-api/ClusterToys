@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+ configure)
+  # check for fresh install
+  if [ -z "$2" ]; then
+   echo "first installation"
+  else
+   echo "upgrade"
+  fi
+
+  if ! [ -d "/etc/cconf/store" ] ; then
+   mkdir -p /etc/cconf/store
+  fi
+ ;;
+
+ abort-upgrade|abort-remove|abort-deconfigure)
+ ;;
+
+ *)
+  echo "postinst called with unknown argument \`$1'" >&2
+  exit 0
+ ;;
+esac
+
+exit 0
