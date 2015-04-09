@@ -1,9 +1,11 @@
 #!/bin/bash
 # cbase.lib - bash support functions for cluster toys
 #
-# Version 1.0.2
+# Version 1.0.3
 #
 # history:
+#
+# 04-07-2015 - added versioning
 #
 # 07-25-2014 - added tool check
 #              added new colors
@@ -24,6 +26,7 @@
 #   ct_settings
 #   ct_trim "string to trim"
 #   ct_verbose "verbose message"
+#   ct_version
 #   ct_warn "warning message"
 #
 ## usage:
@@ -100,6 +103,10 @@ CT_LOGGING=0
 CT_FORCE=0
 CT_LOGFILE='/dev/null'
 CT_LOG_DEFAULT_SCOPE='ctoys'
+
+# Cluser Toys Lib variables
+
+CT_LIB_VERSION="1.0.3"
 
 # default colors
 
@@ -308,6 +315,12 @@ function ct_settings {
  # reset logging and silence
  CT_LOGGING=$t_logging
  CT_SILENT=$t_silent
+}
+
+function ct_version {
+ ct_info "Version: $CT_APP_NAME $CT_APP_VERSION"
+ ct_info "Description: $CT_APP_DESCRIPTION"
+ ct_info "CTLib Version: $CT_LIB_VERSION"
 }
 
 function ct_trim {

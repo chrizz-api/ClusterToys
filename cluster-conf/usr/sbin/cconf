@@ -2,9 +2,12 @@
 #
 # cluster toys configuration management
 #
-# version: 1.0.4
+# version: 1.0.5
 #
 # history:
+#
+# 04-07-2015 - added versioning
+#            - minor config fixes
 #
 # 01-15-2015 - seperated domain operations
 #
@@ -62,6 +65,9 @@ CT_TEST=0
 CT_LOGGING=1
 CT_LOGFILE="/var/log/cconf.log"
 CT_LOG_DEFAULT_SCOPE="cconf"
+CT_APP_NAME="cconf"
+CT_APP_DESCRIPTION="ClusterToys cluster configuration manager"
+CT_APP_VERSION="1.0.5"
 
 ## TODO
 #
@@ -106,14 +112,24 @@ if [ "$1" = "-D" ] ; then
  fi
 fi
 
+ct_dist_config_present=0
 if [ -f "$CTCC_DIST_CONFIG" ] ; then
  ct_debug "loading $CTCC_DIST_CONFIG"
  source "$CTCC_DIST_CONFIG"
+else
+ ct_warn "$CTCC_DIST_CONFIG not found"
+ ct_dist_config_present=1
 fi
 
 if [ -f "$CTCC_LOCAL_CONFIG" ] ; then
  ct_debug "loading $CTCC_LOCAL_CONFIG"
  source "$CTCC_LOCAL_CONFIG"
+else
+ if [ 1 -eq $ct_dist_config_present ] ; then
+  ct_warn "$CTCC_LOCAL_CONFIG not found"
+  ct_error "no config loaded"
+  exit 1
+ fi
 fi
 
 # quick and dirty debug switch
@@ -209,6 +225,7 @@ CTCC_CONST_UP2DATE="UP2DATE"
 ctcc_result=0
 
 function ctcc_usage {
+  ct_version
   ct_info "USAGE: cconf [SWITCHES] [COMMAND] [ARG]"
   ct_info "==================================================================="
   ct_info "\tManageing server configuration"
@@ -236,13 +253,18 @@ function ctcc_usage {
   ct_info "\t\tdisplays detailed config information"
   ct_info "\t -l | --list [domain]"
   ct_info "\t\tlists local config store content"
+  ct_info "\t --list-subscriptions"
+  ct_info "\t\tlists subscribed domains"
   ct_info "\t -p | --push [domain]"
   ct_info "\t\tpushes domain to remote config store"
   ct_info "\t -u | --update [domain]"
   ct_info "\t\tupdates local config store with abonement"
+  ct_info "\t --version"
+  ct_info "\t\tshow application"
 }
 
 function ctcc_info {
+ ct_version
  ct_settings
  ct_info "Displaying hosts cconf configuration"
  ct_info "\tCTCC_ABO=$CTCC_ABO"
@@ -250,8 +272,16 @@ function ctcc_info {
  ct_info "\tCTCC_ENABLED=$CTCC_ENABLED"
  ct_info "\tCTCC_KEYAUTH=$CTCC_KEYAUTH"
  ct_info "Local and Remote configs"
- ct_info "\tCTCC_DIST_CONFIG=$CTCC_DIST_CONFIG"
- ct_info "\tCTCC_LOCAL_EXCLUDE_FILE=$CTCC_LOCAL_EXCLUDE_FILE"
+ t_found="${CT_COLOR_RED}not present${CT_COLOR_TEXT}"
+ if [ -f "$CTCC_DIST_CONFIG" ] ; then
+  t_found="${CT_COLOR_GREEN}present${CT_COLOR_TEXT}"
+ fi
+ ct_info "\tCTCC_DIST_CONFIG=$CTCC_DIST_CONFIG [$t_found]"
+ t_found="${CT_COLOR_RED}not present${CT_COLOR_TEXT}"
+ if [ -f "$CTCC_LOCAL_EXCLUDE_FILE" ] ; then
+  t_found="${CT_COLOR_GREEN}present${CT_COLOR_TEXT}"
+ fi
+ ct_info "\tCTCC_LOCAL_EXCLUDE_FILE=$CTCC_LOCAL_EXCLUDE_FILE [$t_found]"
  ct_info "\tCTCC_LOCAL_EXCLUDE_ENABLED=$CTCC_LOCAL_EXCLUDE_ENABLED"
  ct_info "\tCTCC_LOCAL_PATH=$CTCC_LOCAL_PATH"
  ct_info "\tCTCC_ROOT_PATH=$CTCC_ROOT_PATH"
@@ -668,6 +698,15 @@ function ctcc_list {
   done
 }
 
+function ctcc_list_subscriptions {
+ t_domains="$CTCC_ABO"
+ ct_info "listing subscribed domains:"
+ for t_domain in $t_domains
+ do
+  ct_info "$t_domain"
+ done
+}
+
 function ctcc_xtest {
  ct_log "log test"
  ct_log "long log test" "ctcc_xtest"
@@ -729,6 +768,10 @@ while (( "$#" )) ; do
    ctcc_list "$t_arg"
    exit 0
    ;;
+  --list-subscriptions)
+   ctcc_list_subscriptions
+   shift
+   ;;
   -p|--push) # maybe domain
    if [[ -n "$2" && "${2::1}" != "-" ]] ; then
     t_arg="$2"
@@ -754,6 +797,11 @@ while (( "$#" )) ; do
    fi
    shift
    ctcc_xtest "$t_arg"
+   exit 0
+   ;;
+  --version)
+   shift
+   ct_version
    exit 0
    ;;
 # switches
