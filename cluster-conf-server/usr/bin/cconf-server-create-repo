@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# create an empty distribution store
+# create an empty cconf repository store
 #
 # Version 1.0.0
 #
@@ -21,12 +21,12 @@ CT_VERBOSE=0
 CT_TEST=0
 CT_SILENT=0
 CT_LOGGING=1
-CT_LOG_DEFAULT_SCOPE="cconf-server-create-dist"
+CT_LOG_DEFAULT_SCOPE="cconf-server-create-repo"
 
 # default parameter
 
 CTCC_HOME="/var/ctoys/cconf-server"
-CTCC_DISTDIR="$CTCC_HOME/dists"
+CTCC_REPOSDIR="$CTCC_HOME/repos"
 CTCC_USER="cconf"
 CT_LOGFILE="$CTCC_HOME/cconf-server.log"
 
@@ -76,13 +76,13 @@ fi
 ## functions
 
 function ctcd_usage {
-  ct_info "USAGE: cconf-server-create-dist [SWITCHES] [COMMAND] [domains]"
+  ct_info "USAGE: cconf-server-create-repo [SWITCHES] [COMMAND] [domains]"
   ct_info "==================================================================="
-  ct_info "\tcreates local distribution store"
+  ct_info "\tcreates local repository store"
   ct_info ""
   ct_info "\tEXAMPLE:"
   ct_info ""
-  ct_info "\t\tcconf-server-create-dist squeeze wheezy precise trusty"
+  ct_info "\t\tcconf-server-create-repo test1 companya companyb"
   ct_info "\tSWITCHES:"
   ct_info ""
   ct_info "\t -D [level]"
@@ -102,41 +102,41 @@ function ctcd_usage {
 
 function ctcd_info {
  ct_settings
- ct_info "Displaying hosts cconf-server-create-dist configuration"
+ ct_info "Displaying hosts cconf-server-create-repo configuration"
  ct_info "\tCTCC_HOME=$CTCC_HOME"
- ct_info "\tCTCC_DISTDIR=$CTCC_DISTDIR"
+ ct_info "\tCTCC_REPOSDIR=$CTCC_REPOSDIR"
 }
 
-function ctcd_create_dist {
- local t_dist="$1"
- local t_dist_target="$CTCC_DISTDIR/$t_dist"
+function ctcd_create_repo {
+ local t_repo="$1"
+ local t_repo_target="$CTCC_REPOSDIR/$t_repo"
  local t_progress=1
- if [ -d "$CTCC_DISTDIR/$1" ] ; then
+ if [ -d "$CTCC_REPOSDIR/$1" ] ; then
   t_progress=0
-  ct_warn "distribution allready exist!"
+  ct_warn "repository allready exist!"
  fi
  if [ $t_progress -eq 1 ] ; then
-  ct_info "create distribution conf and backup folder for $1"
+  ct_info "create repository conf and backup folder for $1"
   if [ $c_chown_needed -eq 1 ] ; then
-   ct_exec "${CTT[SU]} -s ${CTT[SH]} -c \"${CTT[MKDIR]} -p -m 755 $t_dist_target/backup\" $CTCC_USER"
+   ct_exec "${CTT[SU]} -s ${CTT[SH]} -c \"${CTT[MKDIR]} -p -m 755 $t_repo_target/backup\" $CTCC_USER"
    if [ $CT_TEST -eq 0 ] ; then
-    ${CTT['SU']} -s ${CTT['SH']} -c "${CTT[MKDIR]} -p -m 755 $t_dist_target/backup" $CTCC_USER
+    ${CTT['SU']} -s ${CTT['SH']} -c "${CTT[MKDIR]} -p -m 755 $t_repo_target/backup" $CTCC_USER
    fi
-   ct_exec "${CTT[SU]} -s ${CTT[SH]} -c \"${CTT[MKDIR]} -p -m 755 $t_dist_target/conf\" $CTCC_USER"
+   ct_exec "${CTT[SU]} -s ${CTT[SH]} -c \"${CTT[MKDIR]} -p -m 755 $t_repo_target/conf\" $CTCC_USER"
    if [ $CT_TEST -eq 0 ] ; then
-    ${CTT[SU]} -s ${CTT[SH]} -c "${CTT[MKDIR]} -p -m 755 $t_dist_target/conf" $CTCC_USER
+    ${CTT[SU]} -s ${CTT[SH]} -c "${CTT[MKDIR]} -p -m 755 $t_repo_target/conf" $CTCC_USER
    fi
-   ct_log "user $c_uid created distribution store $t_dist"
+   ct_log "user $c_uid created repository store $t_repo"
   else
-   ct_exec "${CTT[MKDIR]} -p -m 755 \"$t_dist_target/backup\""
+   ct_exec "${CTT[MKDIR]} -p -m 755 \"$t_repo_target/backup\""
    if [ $CT_TEST -eq 0 ] ; then
-    ${CTT[MKDIR]} -p -m 755 "$t_dist_target/backup"
+    ${CTT[MKDIR]} -p -m 755 "$t_repo_target/backup"
    fi
-   ct_exec "${CTT[MKDIR]} -p -m 755 \"$t_dist_target/conf\""
+   ct_exec "${CTT[MKDIR]} -p -m 755 \"$t_repo_target/conf\""
    if [ $CT_TEST -eq 0 ] ; then
-    ${CTT[MKDIR]} -p -m 755 "$t_dist_target/conf"
+    ${CTT[MKDIR]} -p -m 755 "$t_repo_target/conf"
    fi
-   ct_log "created distribution store $t_dist"
+   ct_log "created repository store $t_repo"
   fi
  fi
 }
@@ -145,7 +145,7 @@ function ctcd_create_dist {
 
 if [ $# -eq 0 ] ; then
  ctcd_usage
- ct_warn "missing distribution argument"
+ ct_warn "missing repositpry argument"
  exit 1
 fi
 
@@ -159,7 +159,7 @@ fi
 
 # process arguments
 
-c_dists=""
+c_repos=""
 
 while (( "$#" )) ; do
  case "$1" in
@@ -191,8 +191,8 @@ while (( "$#" )) ; do
    ;;
   *)
    if [[ "${1::1}" != "-" ]] ; then
-    c_dists="$c_dists $1"
-    ct_debug "adding distribution: ($1)"
+    c_repos="$c_repos $1"
+    ct_debug "adding repository: ($1)"
     shift
    else
     ct_error "bad argument: $@"
@@ -203,18 +203,20 @@ while (( "$#" )) ; do
  esac
 done
 
-# preparing distribution list
-ct_debug "distributions: $c_dists"
-c_dists=`ct_trim "$c_dists"`
-ct_debug "prepared distributions: $c_dists"
+# preparing repository list
+ct_debug "repositorys: $c_repos"
+c_repos=`ct_trim "$c_repos"`
+ct_debug "prepared repository: $c_repos"
 
-if [ -z "$c_dists" ] ; then
- ct_error "missing dist argument"
+if [ -z "$c_repos" ] ; then
+ ct_error "missing repository argument"
  ctcd_usage
  exit 1
 fi
 
-for i_dist in $c_dists
+for i_repo in $c_repos
 do
- ctcd_create_dist $i_dist
+ ctcd_create_repo $i_repo
 done
+
+exit 0

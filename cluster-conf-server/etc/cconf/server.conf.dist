@@ -1,5 +1,5 @@
 CTCC_HOME="/var/ctoys/cconf-server"
 CTCC_USER="cconf"
-CTCC_DISTDIR="$CTCC_HOME/dists"
+CTCC_REPOSDIR="$CTCC_HOME/repos"
 CTCC_EXT="tar"
 CT_LOGFILE="$CTCC_HOME/cconf-server.log"

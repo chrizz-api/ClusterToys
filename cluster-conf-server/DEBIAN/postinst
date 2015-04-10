@@ -39,8 +39,8 @@ case "$1" in
    echo "upgrade"
   fi
 
-  if ! [ -d "/var/ctoys/cconf-server/dists" ] ; then
-   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/dists" cconf
+  if ! [ -d "/var/ctoys/cconf-server/repos" ] ; then
+   su -s /bin/sh -c "mkdir -p /var/ctoys/cconf-server/repos" cconf
   fi
  ;;
 
