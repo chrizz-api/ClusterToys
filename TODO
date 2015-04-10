@@ -1,0 +1,18 @@
+- ./cluster-conf-package-generator/usr/bin/cconf-package-gen -D 2 -i
+
+
+cluster-conf:
+
+ - wget timestamp issues and update local repository 
+ - conflict warnings (see above) 
+ - replace DIST system with several abos.d/base bases
+ - allows the system to cherrypick from diffrent bases
+ - additional hook states
+    - init
+    - update
+    - remove
+ - update & enforce
+ - verify before enforcement
+ - state based hooks
+   - init request by file and timestamp like hooks/base/domain.init and hooks/base/domain.init.done
+ - replace tar backend with pure vcs
