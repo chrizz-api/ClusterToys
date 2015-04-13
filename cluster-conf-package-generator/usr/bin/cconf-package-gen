@@ -13,6 +13,7 @@
 # TODO:
 #
 # - quite alot
+# - prepare repos path on a convinent way (like in cconf)
 # - check for user in lib methods
 # - maybe include server config for $CTCC_USER
 # - add additional dependencies to package source control file
@@ -63,7 +64,8 @@ CTCP_CONF="$CTCP_CONF_DIR/package-gen.conf"
 # begin default package-gen.conf.dist
 
 CTCP_BASE='/var/ctoys/cconf-packages'            # base dir for stored data
-CTCP_TARGET_DIST=""                              # target distributions like: wheezy squeeze precise trusty
+CTCP_TARGET_REPO=""                              # target repository
+CTCP_TARGET_DIST=""                              # target distribution (for package generation and distribution)
 CTCP_CCONF_PACKAGE_PREFIX=""                     # prefix for cconf packages
 CTCP_SOURCE_DIR="$CTCP_BASE/src"                 # debian package source directory
 CTCP_BUILD_DIR="$CTCP_BASE/build"                # debian package build directory
@@ -71,7 +73,7 @@ CTCP_TMPL_DIR="$CTCP_BASE/tmpl"                  # template directory
 CTCP_TMPL="cconf-base"                           # select the template to use for package generation here
 CTCP_TMPL_DOMAIN_SEARCHTAG="replaceDOMAIN"       # placeholder in template files for domain
 CTCP_TMPL_PREFIX_SEARCHTAG="replacePREFIX"       # placeholder in template files for prefix
-CTCP_SERVER_BASE="/var/ctoys/cconf-server/dists" # location for the cconf-server home
+CTCP_SERVER_BASE="/var/ctoys/cconf-server/repos" # location for the cconf-server home
 CTCP_REPREPO_BASE="/var/www/apt"                 # reprepo maintained repository location
 CTCP_DOMAIN_CREATION_ENABLED=1                   # create empty domain store
 CTCP_CREATE_SOURCE_ENABLED=1                     # create debian package source from template
@@ -135,9 +137,9 @@ fi
 
 ## check for distribution configuration
 
-if ! [ -n "$CTCP_TARGET_DIST" ] ; then
- ct_warn "missing target distribution in config file (CTCP_TARGET_DIST)"
-fi
+#if ! [ -n "$CTCP_TARGET_DIST" ] ; then
+# ct_warn "missing target distribution in config file (CTCP_TARGET_DIST)"
+#fi
 
 c_domains=""
 
@@ -146,10 +148,6 @@ c_domains=""
 ct_retcode=0
 t_errorcnt=0
 
-ct_check_tool FAKEROOT
-t_errorcnt=$((t_errorcnt + ct_retcode))
-ct_check_tool DPKG
-t_errorcnt=$((t_errorcnt + ct_retcode))
 ct_check_tool CP
 t_errorcnt=$((t_errorcnt + ct_retcode))
 ct_check_tool SED
@@ -158,12 +156,36 @@ ct_check_tool MV
 t_errorcnt=$((t_errorcnt + ct_retcode))
 ct_check_tool TAR
 t_errorcnt=$((t_errorcnt + ct_retcode))
-ct_check_tool REPREPRO
-t_errorcnt=$((t_errorcnt + ct_retcode))
 
 if [ $t_errorcnt -ge 1 ] ; then
  ct_error "missing $t_errorcnt tools - exiting"
  exit 1
+fi
+
+t_errorcnt=0
+
+ct_check_tool FAKEROOT
+t_errorcnt=$((t_errorcnt + ct_retcode))
+ct_check_tool DPKG
+t_errorcnt=$((t_errorcnt + ct_retcode))
+
+if [ $CTCP_DPKGBUILD_ENABLED -eq 1 ] ; then
+ if [ $t_errorcnt -ge 1 ] ; then
+  ct_error "missing $t_errorcnt tools - exiting"
+  exit 1
+ fi
+fi
+
+t_errorcnt=0
+
+ct_check_tool REPREPRO
+t_errorcnt=$((t_errorcnt + ct_retcode))
+
+if [ $CTCP_REPREPO_ENABLED -eq 1 ] ; then
+ if [ $t_errorcnt -ge 1 ] ; then
+  ct_error "missing $t_errorcnt tools - exiting"
+  exit 1
+ fi
 fi
 
 # process arguments
@@ -178,11 +200,17 @@ while (( "$#" )) ; do
   -i|--info)
    ctcp_info
    shift
-   # exit 0
+   exit 0
    ;;
   -d|--distribution) # expecting domain and file
    CTCP_DIST="$2"
    ct_debug "passed distribution target: ($2)"
+   shift
+   shift
+   ;;
+  -r|--repository) # expecting domain and file
+   CTCP_REPO="$2"
+   ct_debug "passed repository target: ($2)"
    shift
    shift
    ;;
@@ -218,9 +246,18 @@ done
 
 ## check for distribution targets
 
-if ! [ -n "$CTCP_DIST" ] ; then
- ct_debug "no distribution specified using config values"
- CTCP_DIST="$CTCP_TARGET_DIST"
+if [ $CTCP_DPKGBUILD_ENABLED -eq 1 ] ; then
+ if ! [ -n "$CTCP_DIST" ] ; then
+  ct_error "no distribution specified"
+  exit 1
+ fi
+fi
+
+## check for repository targets
+
+if ! [ -n "$CTCP_REPO" ] ; then
+ ct_error "no repository specified"
+ exit 1
 fi
 
 # preparing domainlist

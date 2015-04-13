@@ -21,12 +21,12 @@ CT_VERBOSE=0
 CT_TEST=0
 CT_SILENT=1
 CT_LOGGING=1
-CT_LOG_DEFAULT_SCOPE="cconf-server"
+CT_LOG_DEFAULT_SCOPE="cconf-server-prepush"
 
 # default parameter
 
 CTCC_HOME="/var/ctoys/cconf-server/"
-CTCC_DISTDIR="$CTCC_HOME/dists"
+CTCC_REPOSDIR="$CTCC_HOME/repos"
 CTCC_EXT="tar"
 CT_LOGFILE="$CTCC_HOME/cconf-server.log"
 
@@ -76,7 +76,7 @@ t_dist_valid=0
 # check arguments
 
 #  check for target argument
-for t_entry in $CTCC_DISTDIR/*/
+for t_entry in $CTCC_REPOSDIR/*/
 do
  t_dist=${t_entry%*/}
  t_dist=${t_dist##*/}
@@ -98,8 +98,8 @@ if ! [[ "$c_md5sum" =~ [a-f0-9]{32} ]] ; then
  exit 1
 fi
 
-t_source="$CTCC_DISTDIR/$c_dist/conf/$c_domain.$CTCC_EXT"
-t_dest="$CTCC_DISTDIR/$c_dist/backup/$c_domain""_""$t_date"".$CTCC_EXT"
+t_source="$CTCC_REPOSDIR/$c_dist/conf/$c_domain.$CTCC_EXT"
+t_dest="$CTCC_REPOSDIR/$c_dist/backup/$c_domain""_""$t_date"".$CTCC_EXT"
 
 # first entry?
 if ! [[ -f "$t_source" ]] ; then

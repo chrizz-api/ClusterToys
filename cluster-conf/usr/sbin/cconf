@@ -385,30 +385,25 @@ function ctcc_enforce_domain {
  if [ -f "$t_domainfile" ] ; then
   ctcc_verify_domain $t_domain 1
   t_verifysuccess=$?
-  ct_debug "verify successed on 0 ($t_verifysuccess), enforcement enabled ($CTCC_ENFORCE)"
-  if [[ 1 -eq $t_verifysuccess || 1 -eq $CTCC_ENFORCE ]] ; then
-   ct_info "-->enforcing local domain $t_domain"
-   ct_exec "cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_ENFORCE_OPTS $CTCC_TAR_OPTS -xpf $CTCC_LOCAL_STORE/$t_domain.tar"
-   if [ $CT_TEST -eq 0 ] ; then
-    cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_ENFORCE_OPTS $CTCC_TAR_OPTS -xpf $CTCC_LOCAL_STORE/$t_domain.tar
-    t_errorcode=$?
-    ct_debug "enforced $t_domain with $t_domainfile operation returned ($t_errorcode)"
-    ct_log "enforced $t_domain" "enforce"
+  ct_info "-->enforcing local domain $t_domain"
+  ct_exec "cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_ENFORCE_OPTS $CTCC_TAR_OPTS -xpf $CTCC_LOCAL_STORE/$t_domain.tar"
+  if [ $CT_TEST -eq 0 ] ; then
+   cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_ENFORCE_OPTS $CTCC_TAR_OPTS -xpf $CTCC_LOCAL_STORE/$t_domain.tar
+   t_errorcode=$?
+   ct_debug "enforced $t_domain with $t_domainfile operation returned ($t_errorcode)"
+   ct_log "$t_domain enforced" "enforce"
+  fi
+  if [[ -f "$t_domainhook" && ! -f "$t_domainhook.override" ]] ; then
+   ct_info "executing domain hook $t_domainhook"
+   $t_domainhook
+   t_hookerrorcode=$?
+   ct_debug "enforced hook for $t_domain with $t_domainhook operation returned ($t_hookerrorcode)"
+   ct_log "$t_domain hook executed" "enforce"
+   if ! [ $t_hookerrorcode -eq 0 ] ; then
+    ct_error "domain hook error for $t_domain (code $t_hookerrorcode)"
+    t_errorcode=4
+    return $t_errorcode
    fi
-   if [[ -f "$t_domainhook" && ! -f "$t_domainhook.override" ]] ; then
-    ct_info "executing domain hook $t_domainhook"
-    $t_domainhook
-    t_hookerrorcode=$?
-    ct_debug "enforced hook for $t_domain with $t_domainhook operation returned ($t_hookerrorcode)"
-    ct_log "hook $t_domain called" "enforce"
-    if ! [ $t_hookerrorcode -eq 0 ] ; then
-     ct_error "domain hook error for $t_domain (code $t_hookerrorcode)"
-     t_errorcode=4
-     return $t_errorcode
-    fi
-   fi
-  else
-   ct_info "files for $t_domain up to date. use -e to force update"
   fi
   ct_info "<--..done"
  else
@@ -524,9 +519,11 @@ function ctcc_update {
     ${CTT[TOUCH]} $CTCC_LOCAL_PATH/abos.d/$t_upddomain &> /dev/null
    fi
   fi
-  ## enforce domain only if update needed
-  ct_debug "updateneeded ($t_updateneeded), enforce ($CTCC_ENFORCE)"
-  if [[ 1 -eq $t_updateneeded || 1 -eq $CTCC_ENFORCE ]] ; then
+  ## enforce domain only if update needed or verify failed
+  ctcc_verify_domain $t_upddomain 1
+  local t_verifysuccess=$?
+  ct_debug "update needed ($t_updateneeded), enforcement enabled ($CTCC_ENFORCE), verify failed($t_verifysuccess)"
+  if [[ 1 -eq $t_updateneeded || 1 -eq $CTCC_ENFORCE || 0 -ne $t_verifysuccess ]] ; then
    ctcc_enforce_domain $t_upddomain
    ct_info "..done"
   else
@@ -630,15 +627,17 @@ function ctcc_verify_domain {
  if [ -f "$t_domainfile" ] ; then
   if [ 1 -eq $t_silent ] ; then
    # silent mode
-   ct_exec "cd $CTCC_ROOT_PATH; ${CTT[TAR]} -df $t_domainfile &>/dev/null"
+   ct_debug "silent mode"
+   ct_exec "$CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_OPTS -df $t_domainfile &>/dev/null"
    if [ $CT_TEST -eq 0 ] ; then
     cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_OPTS -df $t_domainfile &>/dev/null
     t_retvalue=$?
    fi
   else
    # info mode
+   ct_debug "info mode"
    ct_info "--> verify local domain store $t_domain..."
-   ct_exec "cd $CTCC_ROOT_PATH; ${CTT[TAR]} -df $t_domainfile"
+   ct_exec "cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_OPTS -df $t_domainfile"
    if [ $CT_TEST -eq 0 ] ; then
     cd $CTCC_ROOT_PATH; ${CTT[TAR]} $CTCC_TAR_OPTS -df $t_domainfile
     t_retvalue=$?
