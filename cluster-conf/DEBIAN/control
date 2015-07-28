@@ -1,7 +1,7 @@
 Section: main
 Priority: optional
 Package: cluster-conf
-Version: 1.0.4-1
+Version: 1.0.5-1
 Maintainer: Christian Hilker <ch@ancientspledge.com>
 Depends: cluster-toys-common, rsync, awk, sed, tar, curl
 Architecture: all

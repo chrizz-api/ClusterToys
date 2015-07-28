@@ -1,7 +1,7 @@
 Section: main
 Priority: optional
 Package: cluster-toys-common
-Version: 1.0.2-7
+Version: 1.0.3-1
 Maintainer: Christian Hilker <ch@ancientspledge.com>
 Depends: bash
 Architecture: all
