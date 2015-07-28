@@ -92,6 +92,7 @@ CTCC_REPO="myrepo"                                         # repository configur
 CTCC_ABO=""                                                # init abos empty
 CTCC_REMOTE_USER="cconf"                                   # remote username for rsync connection
 CTCC_REMOTE_HOST="cconf.my.domain"                         # remote hostname
+CTCC_REMOTE_SSH_PORT="22"                                  # remote ssh port
 CTCC_REMOTE_HTTP="http://cconf.my.domain"                  # webserver hostname
 CTCC_REMOTE_AUTHKEY="$CTCC_LOCAL_PATH/cconf.key"           # authkey for rsync connection
 CTCC_REMOTE_HOME="/var/ctoys/cconf-server"                 # cluster-conf home dir
@@ -322,9 +323,9 @@ function ctcc_push {
    if [ $CTCC_KEYAUTH -eq 1 ] ; then
     t_sshidentityopt="-i $CTCC_REMOTE_AUTHKEY"
    fi
-   ct_exec "$CTCC_SSH $t_sshidentityopt $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST \"$t_prepushcmd\""
+   ct_exec "${CTT[SSH]} -p $CTCC_REMOTE_SSH_PORT $t_sshidentityopt $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST \"$t_prepushcmd\""
    if [ $CT_TEST -eq 0 ] ; then
-    t_prepush_result=`${CTT[SSH]} $t_sshidentityopt $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST "$t_prepushcmd"`
+    t_prepush_result=`${CTT[SSH]} -p $CTCC_REMOTE_SSH_PORT $t_sshidentityopt $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST "$t_prepushcmd"`
    else
     t_prepush_result=$CTCC_CONST_OK
    fi
@@ -334,15 +335,15 @@ function ctcc_push {
     $CTCC_CONST_OK)
      ct_info "new revision will be created"
      if [ $CTCC_KEYAUTH -eq 1 ] ; then
-      ct_exec "${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops -e \"${CTT[SSH]} -i $CTCC_REMOTE_AUTHKEY\" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar"
+      ct_exec "${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops -e \"${CTT[SSH]} -p $CTCC_REMOTE_SSH_PORT -i $CTCC_REMOTE_AUTHKEY\" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar"
       if [ $CT_TEST -eq 0 ] ; then
-       ${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops -e "${CTT[SSH]} -i $CTCC_REMOTE_AUTHKEY" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar
+       ${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops -e "${CTT[SSH]} -p $CTCC_REMOTE_SSH_PORT -i $CTCC_REMOTE_AUTHKEY" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar
        ct_log "pushed $t_domain" "push"
       fi
      else
-      ct_exec "${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar"
+      ct_exec "${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops -e \"${CTT[SSH]} -p $CTCC_REMOTE_SSH_PORT\" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar"
       if [ $CT_TEST -eq 0 ] ; then
-       ${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar
+       ${CTT[RSYNC]} $CTCC_RSYNC_OPTS $t_premission_fix_ops -e "${CTT[SSH]} -p $CTCC_REMOTE_SSH_PORT" $CTCC_LOCAL_STORE/$t_domain.tar $CTCC_REMOTE_USER@$CTCC_REMOTE_HOST:$CTCC_REMOTE_STORE/$t_domain.tar
        ct_log "pushed $t_domain" "push"
       fi
      fi

@@ -1,13 +1,13 @@
-CTCC_OS="debian"                                                # OS configuration
-CTCC_DIST="wheezy"                                              # distribution configuration
-
+# client config
+CTCC_REPO="mycluster"                                           # distribution configuration
+# remote config
 CTCC_REMOTE_USER="cconf"                                        # remote username for rsync connection
 CTCC_REMOTE_HOST="my.funny.host.com"                            # remote hostname
+CTCC_REMOTE_SSH_PORT="22"                                       # remote ssh port
 CTCC_REMOTE_HTTP="http://www.my.funny.host.com"                 # webserver hostname
 CTCC_REMOTE_AUTHKEY="$CTCC_LOCAL_PATH/id_cconf"                 # authkey for rsync connection
 CTCC_REMOTE_HOME="/var/ctoys/cconf-server"                      # cluster-conf home dir
-CTCC_REMOTE_DISTDIR="$CTCC_REMOTE_HOME/dists"                   # remote location for rsync connection
-CTCC_REMOTE_URL_PREFIX="/"                                      # prefix for http url like
+CTCC_REMOTE_REPOSDIR="$CTCC_REMOTE_HOME/repos"                  # remote location for rsync connection
+CTCC_REMOTE_URL_PREFIX="/cconf"                                 # prefix for http url like
                                                                 # http://my.domain.com/cconf/prefix
                                                                 # prefix would be [/cconf/prefix]
-
