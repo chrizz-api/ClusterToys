@@ -2,9 +2,14 @@
 #
 # cluster toys configuration management
 #
-# version: 1.0.5
+# version: 1.0.6
 #
 # history:
+#
+# 04-13-2016 - fixed update check bug
+#            - added wildcard support and relative path's
+#
+# 03-15-2016 - fixed bug in tmpfile handling
 #
 # 04-07-2015 - added versioning
 #            - minor config fixes
@@ -451,6 +456,7 @@ function ctcc_update {
  fi
  for t_upddomain in $t_upddomains
  do
+	t_updateneeded=0;
   ## check for presence of the domain in abos.d and sequently ask if update is requested and/or domain should be added to abos.d
   # evaluate if domain is part of abos.d
   # TODO do this pretty
@@ -487,7 +493,7 @@ function ctcc_update {
    else
     # check timestamps
     if test $t_tmpfile -nt $CTCC_LOCAL_STORE/$t_upddomain.tar ; then
-     ct_debug "remote store is older then local store"
+     ct_debug "remote store is newer then local store"
      t_updateneeded=1
     elif test $t_tmpfile -ot $CTCC_LOCAL_STORE/$t_upddomain.tar ; then
      ct_warn "local store is newer then remote store, maybe local commits wait for a push"
@@ -506,7 +512,7 @@ function ctcc_update {
    ct_exec "${CTT[RM]} -f $t_tmpfile &> /dev/null"
    if [ $CT_TEST -eq 0 ] ; then
     ct_debug "delete tempfile $t_tmpfile"
-    # ${CTT[RM]} -f $t_tmpfile &> /dev/null
+    ${CTT[RM]} -f $t_tmpfile &> /dev/null
    fi
   else
    ctcc_result=1
@@ -537,16 +543,19 @@ function ctcc_update {
 ## status : TESTING
 
 function ctcc_commit {
-  if ! [ $# -eq 2 ] ; then
+  if [ $# -le 1 ] ; then
    ct_error "missing arguments"
    exit 1
   fi
-  ct_info "commit $2 to local config domain store $1..."
+  ct_info "commit to local config domain store $1"
   t_domain="$1"
   t_domainstore="$CTCC_LOCAL_STORE/$t_domain.tar"
   ct_debug "local domain store file: $t_domainstore"
-  t_commit_file="$2"
+	# modes update, create
+	t_mode='update';
+	# check domain
   if ! [ -f $t_domainstore ] ; then
+	 t_mode='create';
    # check for abos.d entry and create
    ct_warn "domain store file $t_domainstore doesnt exist"
    if ! [ -f "$CTCC_LOCAL_PATH/abos.d/$t_domain" ] ; then
@@ -557,51 +566,39 @@ function ctcc_commit {
      ct_log "adding domain $t_domain to abo list" "abo"
     fi
    fi
-   # try update from remote domain store
-   ct_warn "trying to update from a possible remote domain store"
-   ctcc_update "$t_domain"
-   if [ $ctcc_result -ne 0 ] ; then
-    ct_warn "update for domain $t_domain failed with $ctcc_result assuming empty domain"
-    ct_exec "${CTT[RM]} -f $t_domainstore"
-    if [ $CT_TEST -eq 0 ] ; then
-     ${CTT[RM]} -f $t_domainstore
-    fi
-   fi
-   if ! [ -f $t_domainstore ] ; then
-    # create new domain
-    ct_warn "creating new domain ( $1 ) repository ( $CTCC_REPO )"
-    ct_exec "${CTT[TAR]} -cf $t_domainstore $t_commit_file"
-    if [ $CT_TEST -eq 0 ] ; then
-     ${CTT[TAR]} -cf $t_domainstore $t_commit_file
-     ct_log "creating domain $t_domain with file $t_commit_file" "initial-commit"
-    fi
-   else
-    # update old domain
-    ct_warn "commiting to existing domain"
-    ct_exec "${CTT[TAR]} $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null"
-    if [ $CT_TEST -eq 0 ] ; then
-     ${CTT[TAR]} $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null
-    fi
-    ct_exec "${CTT[TAR]} $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file"
-    if [ $CT_TEST -eq 0 ] ; then
-     ${CTT[TAR]} $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file
-     ct_log "adding file $t_commit_file to domain $t_domain" "commit"
-    fi
-    ct_warn "the domain should be enforced after initial commit"
-   fi
-  else
-   # try to remove orginal file
-   ct_exec "${CTT[TAR]} $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null"
-   if [ $CT_TEST -eq 0 ] ; then
-    ${CTT[TAR]} $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null
-   fi
-   # add new file
-   ct_exec "${CTT[TAR]} $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file"
-   if [ $CT_TEST -eq 0 ] ; then
-    ${CTT[TAR]} $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file
-    ct_log "adding file $t_commit_file to domain $t_domain" "commit"
-   fi
-  fi
+	 #TODO check if remote domain present and ask for interaction
+	fi
+	# iterate over arguments because shell passes file patterns as single file arguments
+	shift
+	for i_fentry in "$@"
+	do
+		t_commit_file=$(realpath $i_fentry);
+		# update existing domainstore
+		if [ "$t_mode" = 'update' ]; then
+			ct_info "* adding $t_commit_file";
+			# remove possibly existing version
+			ct_exec "${CTT[TAR]} $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null"
+			if [ $CT_TEST -eq 0 ] ; then
+				${CTT[TAR]} $CTCC_TAR_OPTS --delete -f $t_domainstore ${t_commit_file/\//} &> /dev/null
+			fi
+			# add new file
+			ct_exec "${CTT[TAR]} $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file"
+			if [ $CT_TEST -eq 0 ] ; then
+				${CTT[TAR]} $CTCC_TAR_OPTS -uf $t_domainstore $t_commit_file
+				ct_log "adding file $t_commit_file to domain $t_domain" "commit"
+			fi
+		else
+		# create domainstore
+			ct_warn "creating new domain ( $t_domain ) repository ( $CTCC_REPO )"
+			ct_exec "${CTT[TAR]} -cf $t_domainstore $t_commit_file"
+			ct_info "* adding $t_commit_file";
+			t_mode='update';
+			if [ $CT_TEST -eq 0 ] ; then
+				${CTT[TAR]} -cf $t_domainstore $t_commit_file
+    		ct_log "creating domain $t_domain with file $t_commit_file" "initial-commit"
+			fi
+		fi
+	done
   ct_info "..done"
 }
 
@@ -739,7 +736,8 @@ while (( "$#" )) ; do
    # exit 0
    ;;
   -c|--commit) # expecting domain and file
-   ctcc_commit $2 $3
+	 shift
+   ctcc_commit $@
    exit 0
    ;;
   -e|--enforce) # maybe domain

@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+install)
+	# do some magic
+	;;
+upgrade|abort-upgrade)
+	ucf --purge /etc/cconf/cconf.dist.conf.dist
+	ucf --purge /etc/cconf/cconf.local.conf.dist
+	ucf --purge /etc/cconf/excludes.conf.dist
+	;;
+*)
+	echo "postinst called with unknown argument \`$1'" >&2
+	exit 0
+        ;;
+esac
+
+exit 0
